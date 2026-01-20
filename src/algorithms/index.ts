@@ -9,6 +9,7 @@ import type {
 import { threshold, thresholdColor } from './threshold.ts';
 import { errorDiffusionMono, errorDiffusionColor, ERROR_KERNELS } from './error-diffusion.ts';
 import { orderedDitherMono, orderedDitherColor, BAYER_MATRICES } from './ordered.ts';
+import { wasmDitherMono, shouldUseWasm, initWasm, isWasmLoaded } from '../engine/wasm-dither.ts';
 
 /**
  * Algorithm registry with metadata
@@ -277,7 +278,8 @@ export function dither(
  * Check if algorithm is implemented
  */
 export function isAlgorithmImplemented(algorithm: Algorithm): boolean {
-    const implemented = [
+    // JS-implemented algorithms
+    const jsImplemented = [
         'threshold', 'threshold-color',
         'floyd-steinberg', 'jarvis-judice-ninke', 'stucki', 'burkes',
         'sierra3', 'sierra2', 'sierra-lite', 'atkinson', 'stevenson-arce',
@@ -288,5 +290,89 @@ export function isAlgorithmImplemented(algorithm: Algorithm): boolean {
         'ordered-bayer8', 'ordered-bayer16', 'ordered-bayer32',
         'ordered-bayer8-color'
     ];
-    return implemented.includes(algorithm);
+
+    // WASM-implemented algorithms
+    const wasmImplemented = [
+        // Additional error diffusion kernels
+        'shiau-fan3', 'xot', 'diagonal', 'diffusion-1d', 'diffusion-2d',
+        'steve-pigeon', 'robert-kist',
+        // Additional ordered matrices
+        'ordered-blue-noise',
+        'ordered-clustered-v1', 'ordered-clustered-v2', 'ordered-clustered-v3',
+        'ordered-clustered-v4', 'ordered-clustered-v5', 'ordered-clustered-v6',
+        'ordered-clustered-v7', 'ordered-clustered-v8', 'ordered-clustered-v9',
+        'ordered-clustered-v10', 'ordered-clustered-v11',
+        'ordered-dispersed-v1', 'ordered-dispersed-v2', 'ordered-ulichney-void',
+        'ordered-nonrect-v1', 'ordered-nonrect-v2', 'ordered-nonrect-v3', 'ordered-nonrect-v4',
+        'ordered-ulichney-bayer5', 'ordered-ulichney-standard', 'ordered-ulichney-clustered',
+        'ordered-diagonal',
+        'ordered-im-circle5', 'ordered-im-circle6', 'ordered-im-circle7',
+        'ordered-im-45deg4', 'ordered-im-45deg6', 'ordered-im-45deg8',
+        'ordered-variable2', 'ordered-variable4', 'ordered-interleaved-gradient',
+        // Riemersma
+        'riemersma-hilbert', 'riemersma-hilbert-mod', 'riemersma-peano',
+        'riemersma-fass0', 'riemersma-fass1', 'riemersma-fass2',
+        'riemersma-gosper', 'riemersma-fass-spiral',
+        // Pattern
+        'pattern-2x2', 'pattern-3x3-v1', 'pattern-3x3-v2', 'pattern-3x3-v3',
+        'pattern-4x4', 'pattern-5x2',
+        // Dot Diffusion
+        'dot-diffusion-knuth', 'dot-diffusion-mini-knuth', 'dot-diffusion-optimized-knuth',
+        'dot-diffusion-mese-8x8', 'dot-diffusion-mese-16x16',
+        'dot-diffusion-guo-liu-8x8', 'dot-diffusion-guo-liu-16x16',
+        'dot-diffusion-spiral', 'dot-diffusion-inverted-spiral',
+        // Dot Lippens
+        'dot-lippens-li1', 'dot-lippens-li2', 'dot-lippens-li3',
+        'dot-lippens-guo', 'dot-lippens-mese', 'dot-lippens-knuth',
+        // Variable Error Diffusion
+        'variable-ostromoukhov', 'variable-zhou-fang',
+        // Other
+        'grid', 'dbs', 'kacker-allebach'
+    ];
+
+    return jsImplemented.includes(algorithm) || wasmImplemented.includes(algorithm);
+}
+
+/**
+ * Async dithering function that uses WASM when available
+ */
+export async function ditherAsync(
+    input: ImageData,
+    algorithm: Algorithm,
+    palette: Palette,
+    options: AlgorithmOptions = {},
+    colorMatchMethod: ColorMatchMethod = 'euclidean'
+): Promise<ImageData> {
+    // Check if this algorithm should use WASM
+    if (shouldUseWasm(algorithm)) {
+        try {
+            return await wasmDitherMono(input, algorithm, palette, options);
+        } catch (error) {
+            console.warn(`WASM dither failed for ${algorithm}, falling back to JS:`, error);
+        }
+    }
+
+    // Fall back to synchronous JS implementation
+    return dither(input, algorithm, palette, options, colorMatchMethod);
+}
+
+/**
+ * Pre-initialize WASM module (call on app startup)
+ */
+export async function initDitherWasm(): Promise<boolean> {
+    try {
+        await initWasm();
+        console.log('WASM dither module initialized');
+        return true;
+    } catch (error) {
+        console.warn('Failed to initialize WASM dither module:', error);
+        return false;
+    }
+}
+
+/**
+ * Check if WASM dithering is available
+ */
+export function isWasmDitherAvailable(): boolean {
+    return isWasmLoaded();
 }

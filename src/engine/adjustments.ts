@@ -110,21 +110,21 @@ export function applyAdjustments(
  * Apply only brightness adjustment
  */
 export function applyBrightness(input: ImageData, brightness: number): ImageData {
-    return applyAdjustments(input, { brightness, contrast: 0, gamma: 1.0 });
+    return applyAdjustments(input, { brightness, contrast: 0, gamma: 1.0, blackPoint: 0, whitePoint: 255 });
 }
 
 /**
  * Apply only contrast adjustment
  */
 export function applyContrast(input: ImageData, contrast: number): ImageData {
-    return applyAdjustments(input, { brightness: 0, contrast, gamma: 1.0 });
+    return applyAdjustments(input, { brightness: 0, contrast, gamma: 1.0, blackPoint: 0, whitePoint: 255 });
 }
 
 /**
  * Apply only gamma correction
  */
 export function applyGamma(input: ImageData, gamma: number): ImageData {
-    return applyAdjustments(input, { brightness: 0, contrast: 0, gamma });
+    return applyAdjustments(input, { brightness: 0, contrast: 0, gamma, blackPoint: 0, whitePoint: 255 });
 }
 
 /**

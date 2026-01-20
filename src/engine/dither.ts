@@ -1,7 +1,7 @@
 import { app, shouldRedither } from '../app.ts';
 import type { Algorithm, Palette, AlgorithmOptions, ImageAdjustments, ColorMatchMethod, Color } from '../types/index.ts';
 import { applyAdjustments, hasAdjustments } from './adjustments.ts';
-import { dither as ditherAlgorithm } from '../algorithms/index.ts';
+import { dither as ditherAlgorithm, ditherAsync, initDitherWasm } from '../algorithms/index.ts';
 import { getColorDistanceFunction } from './color.ts';
 
 /**
@@ -186,9 +186,9 @@ export async function processImage(
         workingPalette = reducePalette(processed, palette, levels, colorMatchMethod);
     }
 
-    // Step 4: Apply dithering
+    // Step 4: Apply dithering (use async WASM when available)
     const startTime = performance.now();
-    let result = ditherAlgorithm(processed, algorithm, workingPalette, options, colorMatchMethod);
+    let result = await ditherAsync(processed, algorithm, workingPalette, options, colorMatchMethod);
     const duration = performance.now() - startTime;
 
     // Step 5: Upscale back to original size if we downscaled
@@ -248,7 +248,14 @@ export function triggerDither(): void {
 /**
  * Initialize dithering engine - subscribe to state changes
  */
-export function initDitherEngine(): void {
+export async function initDitherEngine(): Promise<void> {
+    // Initialize WASM module in background (don't block startup)
+    initDitherWasm().then(success => {
+        if (success) {
+            console.log('WASM dithering enabled - all algorithms now available');
+        }
+    });
+
     // Listen for state changes that should trigger re-dithering
     app.on('statechange', (e) => {
         if (shouldRedither(e.detail.changes)) {

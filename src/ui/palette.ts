@@ -30,10 +30,9 @@ export function initPalette(container: HTMLElement): void {
         const state = app.getState();
         const { colors } = state.palette;
 
-        const isEditable = currentSource === 'custom';
         const html = colors.map((color, index) => {
             const hex = colorToHex(color);
-            return `<div class="color-swatch${isEditable ? ' editable' : ''}" data-index="${index}" style="background-color: ${hex};" title="${hex}"></div>`;
+            return `<div class="color-swatch editable" data-index="${index}" style="background-color: ${hex};" title="${hex}"></div>`;
         }).join('');
 
         paletteSwatches.innerHTML = html;
@@ -162,10 +161,7 @@ export function initPalette(container: HTMLElement): void {
             const target = e.target as HTMLElement;
             if (target.classList.contains('color-swatch')) {
                 const index = parseInt(target.dataset.index || '0', 10);
-                // Only allow editing in custom mode
-                if (currentSource === 'custom') {
-                    openColorPicker(index);
-                }
+                openColorPicker(index, target);
             }
         });
     }
@@ -251,22 +247,34 @@ function hexToColor(hex: string): Color {
 }
 
 /**
- * Open color picker for a swatch
+ * Open color picker for a swatch using Coloris
  */
-function openColorPicker(index: number): void {
+function openColorPicker(index: number, clickedElement?: HTMLElement): void {
     const state = app.getState();
     const color = state.palette.colors[index];
     if (!color) return;
 
-    // Create a temporary color input
-    const input = document.createElement('input');
-    input.type = 'color';
-    input.value = colorToHex(color);
+    const input = document.getElementById('coloris-input') as HTMLInputElement;
+    if (!input) return;
 
-    input.addEventListener('input', () => {
+    // Position the input near the clicked swatch so Coloris appears in the right place
+    if (clickedElement) {
+        const rect = clickedElement.getBoundingClientRect();
+        input.style.position = 'fixed';
+        input.style.top = `${rect.bottom + 5}px`;
+        input.style.left = `${rect.left}px`;
+    }
+
+    input.value = colorToHex(color);
+    input.dataset.colorIndex = String(index);
+
+    // Bind change handler
+    input.oninput = () => {
+        const idx = parseInt(input.dataset.colorIndex || '0', 10);
         const newColor = hexToColor(input.value);
-        const newColors = [...state.palette.colors];
-        newColors[index] = newColor;
+        const currentState = app.getState();
+        const newColors = [...currentState.palette.colors];
+        newColors[idx] = newColor;
 
         const newPalette: Palette = {
             name: 'Custom',
@@ -277,8 +285,9 @@ function openColorPicker(index: number): void {
             palette: newPalette,
             customPalette: newPalette
         });
-    });
+    };
 
+    // Trigger Coloris to open
     input.click();
 }
 

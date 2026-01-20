@@ -12,16 +12,17 @@
         "electron:build": "vite build && electron-builder"
     },
     "dependencies": {
-        "culori": "^4.0.1",
-        "comlink": "^4.4.1",
+        "@melloware/coloris": "^0.25.0",
         "browser-fs-access": "^0.35.0",
+        "comlink": "^4.4.1",
+        "culori": "^4.0.1",
         "file-saver": "^2.0.5"
     },
     "devDependencies": {
-        "typescript": "^5.3.3",
-        "vite": "^5.0.12",
+        "@types/file-saver": "^2.0.7",
         "@types/node": "^20.11.5",
-        "@types/file-saver": "^2.0.7"
+        "typescript": "^5.3.3",
+        "vite": "^5.0.12"
     },
     "engines": {
         "node": ">=18.0.0"

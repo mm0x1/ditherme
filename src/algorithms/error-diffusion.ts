@@ -124,12 +124,14 @@ export const ERROR_KERNELS: Record<string, ErrorKernel> = {
 
 /**
  * Monochrome error diffusion dithering
+ * Supports multi-level palettes (not just 2 colors)
  */
 export function errorDiffusionMono(
     input: ImageData,
     palette: Palette,
     kernelName: string,
-    options: BaseOptions = {}
+    options: BaseOptions = {},
+    colorMatchMethod: ColorMatchMethod = 'luminance'
 ): ImageData {
     const kernel = ERROR_KERNELS[kernelName];
     if (!kernel) {
@@ -142,11 +144,15 @@ export function errorDiffusionMono(
 
     const serpentine = options.serpentine ?? false;
 
-    // Get palette colors (first two for mono)
-    const darkColor = palette.colors[0];
-    const lightColor = palette.colors[palette.colors.length > 1 ? 1 : 0];
-    const darkLum = rgbToLuminance(darkColor.r, darkColor.g, darkColor.b);
-    const lightLum = rgbToLuminance(lightColor.r, lightColor.g, lightColor.b);
+    // Pre-compute luminance values for all palette colors
+    const paletteLuminances = palette.colors.map(c =>
+        rgbToLuminance(c.r, c.g, c.b)
+    );
+
+    // Sort palette by luminance for proper level distribution
+    const sortedPalette = palette.colors
+        .map((color, index) => ({ color, luminance: paletteLuminances[index] }))
+        .sort((a, b) => a.luminance - b.luminance);
 
     // Error buffer - stores error for each pixel (luminance only for mono)
     const errorBuffer = new Float32Array(width * height);
@@ -155,6 +161,22 @@ export function errorDiffusionMono(
     for (let i = 0; i < width * height; i++) {
         const idx = i * 4;
         errorBuffer[i] = rgbToLuminance(data[idx], data[idx + 1], data[idx + 2]);
+    }
+
+    // Function to find nearest palette color by luminance
+    function findNearestByLuminance(lum: number): { color: Color; luminance: number } {
+        let nearest = sortedPalette[0];
+        let minDist = Math.abs(lum - nearest.luminance);
+
+        for (let i = 1; i < sortedPalette.length; i++) {
+            const dist = Math.abs(lum - sortedPalette[i].luminance);
+            if (dist < minDist) {
+                minDist = dist;
+                nearest = sortedPalette[i];
+            }
+        }
+
+        return nearest;
     }
 
     // Process row by row
@@ -172,10 +194,10 @@ export function errorDiffusionMono(
             // Get current value with accumulated error
             const oldVal = errorBuffer[idx];
 
-            // Quantize to nearest palette color
-            const midPoint = (darkLum + lightLum) / 2;
-            const newVal = oldVal > midPoint ? lightLum : darkLum;
-            const color = oldVal > midPoint ? lightColor : darkColor;
+            // Find nearest palette color by luminance
+            const nearest = findNearestByLuminance(oldVal);
+            const color = nearest.color;
+            const newVal = nearest.luminance;
 
             // Store result
             outData[pixelIdx] = color.r;

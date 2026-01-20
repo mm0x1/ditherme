@@ -10,6 +10,8 @@ export interface ImageAdjustments {
     contrast: number;      // -100 to 100
     gamma: number;         // 0.1 to 3.0
     saturation?: number;   // -100 to 100 (color mode only)
+    blackPoint: number;    // 0-50, pixels below this luminance become black (0 = disabled)
+    whitePoint: number;    // 205-255, pixels above this luminance become white (255 = disabled)
 }
 
 /**
@@ -81,7 +83,9 @@ export const DEFAULT_ADJUSTMENTS: ImageAdjustments = {
     brightness: 0,
     contrast: 0,
     gamma: 1.0,
-    saturation: 0
+    saturation: 0,
+    blackPoint: 0,    // 0 = disabled
+    whitePoint: 255   // 255 = disabled
 };
 
 /**

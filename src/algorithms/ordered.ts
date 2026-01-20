@@ -113,6 +113,7 @@ export function orderedDitherMono(
 
 /**
  * Ordered dithering with a specific matrix
+ * Supports multi-level palettes (not just 2 colors)
  */
 export function orderedDitherWithMatrix(
     input: ImageData,
@@ -127,18 +128,22 @@ export function orderedDitherWithMatrix(
     const jitter = options.jitter ?? 0;
     const matrixSize = matrix.size;
 
-    // Get palette colors
-    const darkColor = palette.colors[0];
-    const lightColor = palette.colors[palette.colors.length > 1 ? 1 : 0];
-    const darkLum = rgbToLuminance(darkColor.r, darkColor.g, darkColor.b);
-    const lightLum = rgbToLuminance(lightColor.r, lightColor.g, lightColor.b);
+    // Sort palette by luminance for proper level distribution
+    const sortedPalette = palette.colors
+        .map(color => ({
+            color,
+            luminance: rgbToLuminance(color.r, color.g, color.b) / 255
+        }))
+        .sort((a, b) => a.luminance - b.luminance);
+
+    const numLevels = sortedPalette.length;
 
     // Process each pixel
     for (let y = 0; y < height; y++) {
         for (let x = 0; x < width; x++) {
             const idx = (y * width + x) * 4;
 
-            // Get luminance
+            // Get luminance (0-1)
             const luminance = rgbToLuminance(data[idx], data[idx + 1], data[idx + 2]) / 255;
 
             // Get matrix threshold
@@ -151,8 +156,25 @@ export function orderedDitherWithMatrix(
                 threshold += (Math.random() - 0.5) * jitter;
             }
 
-            // Compare and output
-            const color = luminance > threshold ? lightColor : darkColor;
+            // For multi-level ordered dithering:
+            // Map luminance to a level index, with threshold providing sub-level dithering
+            let color: Color;
+
+            if (numLevels === 2) {
+                // Simple binary case
+                color = luminance > threshold ? sortedPalette[1].color : sortedPalette[0].color;
+            } else {
+                // Multi-level case: use threshold to dither between adjacent levels
+                // Scale luminance to level space
+                const scaledLum = luminance * (numLevels - 1);
+                const lowerLevel = Math.floor(scaledLum);
+                const upperLevel = Math.min(lowerLevel + 1, numLevels - 1);
+                const fraction = scaledLum - lowerLevel;
+
+                // Use threshold to decide between lower and upper level
+                const levelIndex = fraction > threshold ? upperLevel : lowerLevel;
+                color = sortedPalette[levelIndex].color;
+            }
 
             outData[idx] = color.r;
             outData[idx + 1] = color.g;

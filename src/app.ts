@@ -46,7 +46,9 @@ const initialState: AppState = {
         brightness: 0,
         contrast: 0,
         gamma: 1.0,
-        saturation: 0
+        saturation: 0,
+        blackPoint: 0,    // 0 = disabled
+        whitePoint: 255   // 255 = disabled
     },
 
     // Video
@@ -125,7 +127,9 @@ class App extends EventTarget {
                 brightness: 0,
                 contrast: 0,
                 gamma: 1.0,
-                saturation: 0
+                saturation: 0,
+                blackPoint: 0,
+                whitePoint: 255
             }
         });
     }

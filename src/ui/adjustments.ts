@@ -11,19 +11,37 @@ export function initAdjustments(container: HTMLElement): void {
     const gammaSlider = container.querySelector<HTMLInputElement>('#gamma');
     const saturationSlider = container.querySelector<HTMLInputElement>('#saturation');
     const saturationGroup = container.querySelector<HTMLElement>('#saturation-group');
+    const blackPointSlider = container.querySelector<HTMLInputElement>('#black-point');
+    const whitePointSlider = container.querySelector<HTMLInputElement>('#white-point');
 
     // Get value display elements
     const brightnessValue = container.querySelector<HTMLElement>('#brightness-value');
     const contrastValue = container.querySelector<HTMLElement>('#contrast-value');
     const gammaValue = container.querySelector<HTMLElement>('#gamma-value');
     const saturationValue = container.querySelector<HTMLElement>('#saturation-value');
+    const blackPointValue = container.querySelector<HTMLElement>('#black-point-value');
+    const whitePointValue = container.querySelector<HTMLElement>('#white-point-value');
+
+    /**
+     * Format black point value for display
+     */
+    function formatBlackPoint(value: number): string {
+        return value === 0 ? 'Off' : String(value);
+    }
+
+    /**
+     * Format white point value for display
+     */
+    function formatWhitePoint(value: number): string {
+        return value === 255 ? 'Off' : String(value);
+    }
 
     /**
      * Update slider values from state
      */
     function updateFromState(): void {
         const state = app.getState();
-        const { brightness, contrast, gamma, saturation } = state.adjustments;
+        const { brightness, contrast, gamma, saturation, blackPoint, whitePoint } = state.adjustments;
 
         if (brightnessSlider) {
             brightnessSlider.value = String(brightness);
@@ -43,6 +61,16 @@ export function initAdjustments(container: HTMLElement): void {
         if (saturationSlider && saturation !== undefined) {
             saturationSlider.value = String(saturation);
             if (saturationValue) saturationValue.textContent = String(saturation);
+        }
+
+        if (blackPointSlider) {
+            blackPointSlider.value = String(blackPoint);
+            if (blackPointValue) blackPointValue.textContent = formatBlackPoint(blackPoint);
+        }
+
+        if (whitePointSlider) {
+            whitePointSlider.value = String(whitePoint);
+            if (whitePointValue) whitePointValue.textContent = formatWhitePoint(whitePoint);
         }
 
         // Show/hide saturation based on mode
@@ -89,6 +117,36 @@ export function initAdjustments(container: HTMLElement): void {
 
     if (saturationSlider) {
         createAdjustmentHandler(saturationSlider, saturationValue, 'saturation');
+    }
+
+    if (blackPointSlider) {
+        blackPointSlider.addEventListener('input', () => {
+            const value = parseInt(blackPointSlider.value, 10);
+            if (blackPointValue) {
+                blackPointValue.textContent = formatBlackPoint(value);
+            }
+            app.setState({
+                adjustments: {
+                    ...app.getState().adjustments,
+                    blackPoint: value
+                }
+            });
+        });
+    }
+
+    if (whitePointSlider) {
+        whitePointSlider.addEventListener('input', () => {
+            const value = parseInt(whitePointSlider.value, 10);
+            if (whitePointValue) {
+                whitePointValue.textContent = formatWhitePoint(value);
+            }
+            app.setState({
+                adjustments: {
+                    ...app.getState().adjustments,
+                    whitePoint: value
+                }
+            });
+        });
     }
 
     // Reset button

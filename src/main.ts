@@ -11,6 +11,10 @@ import { initPalette } from './ui/palette.ts';
 import { initDragAndDrop, initFileInput, initClipboard, initSaveHandlers } from './engine/image.ts';
 import { initDitherEngine } from './engine/dither.ts';
 
+// Coloris color picker
+import '@melloware/coloris/dist/coloris.css';
+import Coloris from '@melloware/coloris';
+
 /**
  * Get DOM element by ID with null check
  */
@@ -39,6 +43,18 @@ function init(): void {
     console.log('Ditherista initializing...');
 
     try {
+        // Initialize Coloris color picker
+        Coloris.init();
+        Coloris({
+            el: '[data-coloris]',
+            themeMode: 'dark',
+            alpha: false,
+            format: 'hex',
+            swatches: [],
+            focusInput: true,
+            selectInput: false
+        });
+
         // Initialize UI components
         const sidebar = getElement('sidebar');
         const viewport = getElement('viewport');

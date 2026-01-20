@@ -3,9 +3,9 @@ import { rgbToLuminance, findNearestColor, getColorDistanceFunction } from '../e
 
 /**
  * Simple threshold dithering
+ * Supports multi-level palettes (posterization)
  *
- * Each pixel is compared against a threshold value.
- * If the luminance is above the threshold, output white; otherwise black.
+ * Each pixel is mapped to the nearest palette color based on luminance.
  */
 export function threshold(
     input: ImageData,
@@ -16,21 +16,31 @@ export function threshold(
     const output = new ImageData(width, height);
     const outData = output.data;
 
-    const thresholdValue = (options.threshold ?? 0.5) * 255;
-    const useAuto = options.auto ?? false;
     const noiseAmount = (options.noise ?? 0) * 255;
 
-    // Get palette colors (for mono, just use first two colors)
-    const darkColor = palette.colors[0];
-    const lightColor = palette.colors[palette.colors.length > 1 ? 1 : 0];
+    // Sort palette by luminance for proper level distribution
+    const sortedPalette = palette.colors
+        .map(color => ({
+            color,
+            luminance: rgbToLuminance(color.r, color.g, color.b)
+        }))
+        .sort((a, b) => a.luminance - b.luminance);
 
-    // Calculate auto threshold if enabled
-    let autoThreshold = thresholdValue;
-    if (useAuto) {
-        autoThreshold = calculateOtsuThreshold(data, width, height);
+    // Function to find nearest palette color by luminance
+    function findNearestByLuminance(lum: number): Color {
+        let nearest = sortedPalette[0];
+        let minDist = Math.abs(lum - nearest.luminance);
+
+        for (let i = 1; i < sortedPalette.length; i++) {
+            const dist = Math.abs(lum - sortedPalette[i].luminance);
+            if (dist < minDist) {
+                minDist = dist;
+                nearest = sortedPalette[i];
+            }
+        }
+
+        return nearest.color;
     }
-
-    const finalThreshold = useAuto ? autoThreshold : thresholdValue;
 
     // Process each pixel
     for (let i = 0; i < data.length; i += 4) {
@@ -47,8 +57,8 @@ export function threshold(
             luminance += (Math.random() - 0.5) * noiseAmount;
         }
 
-        // Apply threshold
-        const color = luminance > finalThreshold ? lightColor : darkColor;
+        // Find nearest palette color by luminance
+        const color = findNearestByLuminance(luminance);
 
         outData[i] = color.r;
         outData[i + 1] = color.g;

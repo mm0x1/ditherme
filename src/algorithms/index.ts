@@ -206,29 +206,29 @@ export function dither(
 
         // Error Diffusion - Mono
         case 'floyd-steinberg':
-            return errorDiffusionMono(input, palette, 'floyd-steinberg', baseOptions);
+            return errorDiffusionMono(input, palette, 'floyd-steinberg', baseOptions, colorMatchMethod);
         case 'jarvis-judice-ninke':
-            return errorDiffusionMono(input, palette, 'jarvis-judice-ninke', baseOptions);
+            return errorDiffusionMono(input, palette, 'jarvis-judice-ninke', baseOptions, colorMatchMethod);
         case 'stucki':
-            return errorDiffusionMono(input, palette, 'stucki', baseOptions);
+            return errorDiffusionMono(input, palette, 'stucki', baseOptions, colorMatchMethod);
         case 'burkes':
-            return errorDiffusionMono(input, palette, 'burkes', baseOptions);
+            return errorDiffusionMono(input, palette, 'burkes', baseOptions, colorMatchMethod);
         case 'sierra3':
-            return errorDiffusionMono(input, palette, 'sierra3', baseOptions);
+            return errorDiffusionMono(input, palette, 'sierra3', baseOptions, colorMatchMethod);
         case 'sierra2':
-            return errorDiffusionMono(input, palette, 'sierra2', baseOptions);
+            return errorDiffusionMono(input, palette, 'sierra2', baseOptions, colorMatchMethod);
         case 'sierra-lite':
-            return errorDiffusionMono(input, palette, 'sierra-lite', baseOptions);
+            return errorDiffusionMono(input, palette, 'sierra-lite', baseOptions, colorMatchMethod);
         case 'atkinson':
-            return errorDiffusionMono(input, palette, 'atkinson', baseOptions);
+            return errorDiffusionMono(input, palette, 'atkinson', baseOptions, colorMatchMethod);
         case 'stevenson-arce':
-            return errorDiffusionMono(input, palette, 'stevenson-arce', baseOptions);
+            return errorDiffusionMono(input, palette, 'stevenson-arce', baseOptions, colorMatchMethod);
         case 'fake-floyd-steinberg':
-            return errorDiffusionMono(input, palette, 'fake-floyd-steinberg', baseOptions);
+            return errorDiffusionMono(input, palette, 'fake-floyd-steinberg', baseOptions, colorMatchMethod);
         case 'shiau-fan1':
-            return errorDiffusionMono(input, palette, 'shiau-fan1', baseOptions);
+            return errorDiffusionMono(input, palette, 'shiau-fan1', baseOptions, colorMatchMethod);
         case 'shiau-fan2':
-            return errorDiffusionMono(input, palette, 'shiau-fan2', baseOptions);
+            return errorDiffusionMono(input, palette, 'shiau-fan2', baseOptions, colorMatchMethod);
 
         // Error Diffusion - Color
         case 'floyd-steinberg-color':

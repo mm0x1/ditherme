@@ -154,6 +154,22 @@
                             </label>
                             <input type="range" id="saturation" min="-100" max="100" value="0" step="1">
                         </div>
+                        <!-- Black Point -->
+                        <div class="slider-group">
+                            <label>
+                                <span class="slider-label">Black Point</span>
+                                <span class="slider-value" id="black-point-value">Off</span>
+                            </label>
+                            <input type="range" id="black-point" min="0" max="50" value="0" step="1">
+                        </div>
+                        <!-- White Point -->
+                        <div class="slider-group">
+                            <label>
+                                <span class="slider-label">White Point</span>
+                                <span class="slider-value" id="white-point-value">Off</span>
+                            </label>
+                            <input type="range" id="white-point" min="205" max="255" value="255" step="1">
+                        </div>
                     </div>
                 </section>
 
@@ -306,6 +322,9 @@
 
     <!-- Hidden file input -->
     <input type="file" id="file-input" accept="image/png,image/jpeg,image/gif,image/bmp,image/webp" style="display: none;">
+
+    <!-- Hidden color input for Coloris (positioned in right panel area) -->
+    <input type="text" id="coloris-input" data-coloris style="position: fixed; top: 200px; right: 270px; width: 1px; height: 1px; opacity: 0; pointer-events: none;">
 
     <!-- Main script -->
     <script type="module" src="./src/main.ts"></script>

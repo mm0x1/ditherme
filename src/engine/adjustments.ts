@@ -9,10 +9,13 @@ export function applyAdjustments(
     input: ImageData,
     adjustments: ImageAdjustments
 ): ImageData {
-    const { brightness, contrast, gamma, saturation } = adjustments;
+    const { brightness, contrast, gamma, saturation, blackPoint, whitePoint } = adjustments;
 
     // If no adjustments needed, return copy
-    if (brightness === 0 && contrast === 0 && gamma === 1.0 && (saturation === 0 || saturation === undefined)) {
+    const hasBlackWhitePoint = (blackPoint !== undefined && blackPoint > 0) ||
+                               (whitePoint !== undefined && whitePoint < 255);
+    if (brightness === 0 && contrast === 0 && gamma === 1.0 &&
+        (saturation === 0 || saturation === undefined) && !hasBlackWhitePoint) {
         return new ImageData(
             new Uint8ClampedArray(input.data),
             input.width,
@@ -29,6 +32,8 @@ export function applyAdjustments(
     const contrastFactor = (259 * (contrast + 255)) / (255 * (259 - contrast));
     const gammaValue = gamma;
     const saturationFactor = 1 + (saturation ?? 0) / 100;
+    const blackPointValue = blackPoint ?? 0;
+    const whitePointValue = whitePoint ?? 255;
 
     // Build gamma lookup table for performance
     const gammaLUT = new Uint8ClampedArray(256);
@@ -72,6 +77,25 @@ export function applyAdjustments(
             b = gray + saturationFactor * (b - gray);
         }
 
+        // Apply black/white point clipping
+        if (hasBlackWhitePoint) {
+            // Calculate luminance to determine if pixel should be clipped
+            const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
+
+            // Black point: force pixels below threshold to pure black
+            if (blackPointValue > 0 && luminance <= blackPointValue) {
+                r = 0;
+                g = 0;
+                b = 0;
+            }
+            // White point: force pixels above threshold to pure white
+            else if (whitePointValue < 255 && luminance >= whitePointValue) {
+                r = 255;
+                g = 255;
+                b = 255;
+            }
+        }
+
         // Clamp and store
         outData[i] = clamp(Math.round(r));
         outData[i + 1] = clamp(Math.round(g));
@@ -111,6 +135,8 @@ export function hasAdjustments(adjustments: ImageAdjustments): boolean {
         adjustments.brightness !== 0 ||
         adjustments.contrast !== 0 ||
         adjustments.gamma !== 1.0 ||
-        (adjustments.saturation !== undefined && adjustments.saturation !== 0)
+        (adjustments.saturation !== undefined && adjustments.saturation !== 0) ||
+        (adjustments.blackPoint !== undefined && adjustments.blackPoint > 0) ||
+        (adjustments.whitePoint !== undefined && adjustments.whitePoint < 255)
     );
 }

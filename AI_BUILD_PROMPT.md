@@ -1526,25 +1526,29 @@ export async function runBenchmarks() {
 
 ## Implementation Order
 
-### Phase 1: Core Foundation
-1. Set up project structure
-2. Implement Canvas viewport with zoom/pan
-3. Image loading (drag/drop, file picker)
-4. Basic threshold dithering
-5. Image adjustments (brightness, contrast, gamma)
+### Phase 1: Core Foundation ✅ COMPLETE
+1. ✅ Set up project structure
+2. ✅ Implement Canvas viewport with zoom/pan
+3. ✅ Image loading (drag/drop, file picker)
+4. ✅ Basic threshold dithering
+5. ✅ Image adjustments (brightness, contrast, gamma)
 
-### Phase 2: Dithering Algorithms (JavaScript)
-1. Error diffusion (Floyd-Steinberg first)
-2. Ordered dithering (Bayer matrices)
-3. All remaining algorithms
-4. Algorithm parameter UI
+### Phase 2: Dithering Algorithms (JavaScript) - PARTIAL
+1. ✅ Error diffusion (Floyd-Steinberg + 11 other kernels)
+2. ✅ Ordered dithering (Bayer 2x2, 3x3, 4x4, 8x8, 16x16, 32x32)
+3. ⏳ All remaining algorithms (Riemersma, Pattern, Dot Diffusion, DBS pending)
+4. ✅ Algorithm parameter UI (serpentine, jitter, threshold options)
 
-### Phase 3: Color Support
-1. Color palettes (built-in presets)
-2. Color matching methods
-3. Color quantization
-4. Palette editor UI
-5. Color dithering modes
+### Phase 3: Color Support - PARTIAL
+1. ✅ Color palettes (14 built-in presets)
+2. ✅ Color matching methods (Euclidean, CIE76, CIE94, CIEDE2000, Luminance)
+3. ⏳ Color quantization (pending - for auto-generate palette from image)
+4. ✅ Palette editor UI (basic swatch editor)
+5. ✅ Color dithering modes (error diffusion + ordered)
+6. ⏳ Custom palette editor (2-16 user-defined colors)
+7. ⏳ Auto-generate palette from image (always available as palette source)
+8. ⏳ Dither pixel scale (1x-16x block size, mosaic-like effect)
+9. ⏳ Levels/posterization (reduce working palette to N colors from current palette)
 
 ### Phase 4: WebAssembly Optimization
 1. Set up Rust/WASM toolchain

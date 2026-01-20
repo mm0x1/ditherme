@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ditherista - Professional Dithering Application</title>
+    <link rel="stylesheet" href="./src/styles/main.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Menu Bar -->
+        <header class="menu-bar">
+            <div class="menu-item" data-menu="file">
+                <span class="menu-label">File</span>
+                <div class="menu-dropdown">
+                    <button class="menu-action" data-action="open">Open Image...</button>
+                    <button class="menu-action" data-action="open-video">Open Video...</button>
+                    <div class="menu-separator"></div>
+                    <button class="menu-action" data-action="save">Save Image</button>
+                    <button class="menu-action" data-action="save-as">Save As...</button>
+                    <div class="menu-separator"></div>
+                    <button class="menu-action" data-action="export-video">Export Video...</button>
+                    <button class="menu-action" data-action="batch">Batch Dither...</button>
+                </div>
+            </div>
+            <div class="menu-item" data-menu="edit">
+                <span class="menu-label">Edit</span>
+                <div class="menu-dropdown">
+                    <button class="menu-action" data-action="copy">Copy</button>
+                    <button class="menu-action" data-action="paste">Paste</button>
+                    <div class="menu-separator"></div>
+                    <button class="menu-action" data-action="reset-adjustments">Reset Adjustments</button>
+                    <button class="menu-action" data-action="settings">Settings...</button>
+                </div>
+            </div>
+            <div class="menu-item" data-menu="view">
+                <span class="menu-label">View</span>
+                <div class="menu-dropdown">
+                    <button class="menu-action" data-action="zoom-in">Zoom In</button>
+                    <button class="menu-action" data-action="zoom-out">Zoom Out</button>
+                    <button class="menu-action" data-action="fit-to-view">Fit to View</button>
+                    <button class="menu-action" data-action="actual-size">Actual Size (100%)</button>
+                    <div class="menu-separator"></div>
+                    <button class="menu-action" data-action="toggle-original">Toggle Original</button>
+                </div>
+            </div>
+            <div class="menu-item" data-menu="help">
+                <span class="menu-label">Help</span>
+                <div class="menu-dropdown">
+                    <button class="menu-action" data-action="documentation">Documentation</button>
+                    <button class="menu-action" data-action="about">About Ditherista</button>
+                </div>
+            </div>
+            <div class="menu-spacer"></div>
+            <div class="status-indicator">
+                <span id="processing-status"></span>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Left Sidebar - Algorithm Selection -->
+            <aside id="sidebar" class="sidebar">
+                <div class="sidebar-header">
+                    <h2>Algorithms</h2>
+                </div>
+                <div class="mode-tabs">
+                    <button class="mode-tab active" data-mode="mono">Mono</button>
+                    <button class="mode-tab" data-mode="color">Color</button>
+                </div>
+                <div class="algorithm-search">
+                    <input type="search" id="algorithm-search" placeholder="Search algorithms..." autocomplete="off">
+                </div>
+                <div id="algorithm-list" class="algorithm-list"></div>
+                <div id="algorithm-options" class="algorithm-options"></div>
+            </aside>
+
+            <!-- Viewport - Canvas Display -->
+            <section id="viewport" class="viewport">
+                <div class="viewport-canvas-container">
+                    <canvas id="main-canvas"></canvas>
+                </div>
+                <div class="viewport-info">
+                    <span id="zoom-level">100%</span>
+                    <span id="image-dimensions"></span>
+                </div>
+                <!-- Drop overlay -->
+                <div id="drop-overlay" class="drop-overlay hidden">
+                    <div class="drop-message">
+                        <span class="drop-icon">+</span>
+                        <span>Drop image here</span>
+                    </div>
+                </div>
+                <!-- Empty state -->
+                <div id="empty-state" class="empty-state">
+                    <div class="empty-content">
+                        <div class="empty-icon">
+                            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <rect x="3" y="3" width="18" height="18" rx="2"/>
+                                <circle cx="8.5" cy="8.5" r="1.5"/>
+                                <path d="M21 15l-5-5L5 21"/>
+                            </svg>
+                        </div>
+                        <h3>No image loaded</h3>
+                        <p>Drag and drop an image here, or use File &gt; Open</p>
+                        <button id="open-file-btn" class="btn btn-primary">Open Image</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Right Panel - Adjustments & Palette -->
+            <aside class="right-panel">
+                <!-- Adjustments -->
+                <section id="adjustments" class="panel adjustments-panel">
+                    <div class="panel-header">
+                        <h3>Adjustments</h3>
+                        <button class="btn-icon" data-action="reset-adjustments" title="Reset all">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                                <path d="M3 3v5h5"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="panel-content">
+                        <!-- Brightness -->
+                        <div class="slider-group">
+                            <label>
+                                <span class="slider-label">Brightness</span>
+                                <span class="slider-value" id="brightness-value">0</span>
+                            </label>
+                            <input type="range" id="brightness" min="-100" max="100" value="0" step="1">
+                        </div>
+                        <!-- Contrast -->
+                        <div class="slider-group">
+                            <label>
+                                <span class="slider-label">Contrast</span>
+                                <span class="slider-value" id="contrast-value">0</span>
+                            </label>
+                            <input type="range" id="contrast" min="-100" max="100" value="0" step="1">
+                        </div>
+                        <!-- Gamma -->
+                        <div class="slider-group">
+                            <label>
+                                <span class="slider-label">Gamma</span>
+                                <span class="slider-value" id="gamma-value">1.0</span>
+                            </label>
+                            <input type="range" id="gamma" min="0.1" max="3.0" value="1.0" step="0.1">
+                        </div>
+                        <!-- Saturation (Color mode only) -->
+                        <div class="slider-group" id="saturation-group" style="display: none;">
+                            <label>
+                                <span class="slider-label">Saturation</span>
+                                <span class="slider-value" id="saturation-value">0</span>
+                            </label>
+                            <input type="range" id="saturation" min="-100" max="100" value="0" step="1">
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Dither Settings -->
+                <section id="dither-settings" class="panel dither-settings-panel">
+                    <div class="panel-header">
+                        <h3>Dither Settings</h3>
+                    </div>
+                    <div class="panel-content">
+                        <!-- Pixel Scale -->
+                        <div class="slider-group">
+                            <label>
+                                <span class="slider-label">Pixel Scale</span>
+                                <span class="slider-value" id="pixel-scale-value">1x</span>
+                            </label>
+                            <input type="range" id="pixel-scale" min="1" max="16" value="1" step="1">
+                        </div>
+                        <!-- Levels -->
+                        <div class="slider-group">
+                            <label>
+                                <span class="slider-label">Levels</span>
+                                <span class="slider-value" id="levels-value">Off</span>
+                            </label>
+                            <input type="range" id="levels" min="0" max="256" value="0" step="1">
+                        </div>
+                    </div>
+
+                <!-- Palette -->
+                <section id="palette" class="panel palette-panel">
+                    <div class="panel-header">
+                        <h3>Palette</h3>
+                    </div>
+                    <div class="panel-content">
+                        <!-- Palette source -->
+                        <div class="form-group">
+                            <label for="palette-source">Source</label>
+                            <select id="palette-source">
+                                <option value="builtin">Built-in</option>
+                                <option value="load">Load from file...</option>
+                                <option value="generate">Generate from image</option>
+                                <option value="custom">Custom</option>
+                            </select>
+                        </div>
+                        <!-- Built-in palette selector -->
+                        <div class="form-group" id="builtin-palette-group">
+                            <label for="builtin-palette">Preset</label>
+                            <select id="builtin-palette">
+                                <option value="mono">Mono (B&W)</option>
+                                <option value="grayscale4">Grayscale 4</option>
+                                <option value="grayscale8">Grayscale 8</option>
+                                <option value="grayscale16">Grayscale 16</option>
+                                <option value="cga">CGA</option>
+                                <option value="ega">EGA</option>
+                                <option value="mac16">Mac 16</option>
+                                <option value="windows16">Windows 16</option>
+                                <option value="pico8">Pico-8</option>
+                                <option value="c64">Commodore 64</option>
+                                <option value="nes">NES</option>
+                                <option value="gameboy">Game Boy</option>
+                                <option value="gameboy-pocket">Game Boy Pocket</option>
+                                <option value="websafe">Web Safe 216</option>
+                            </select>
+                        </div>
+                        <!-- Color swatches -->
+                        <div id="palette-swatches" class="palette-swatches"></div>
+                        <!-- Custom palette editor (hidden by default) -->
+                        <div id="custom-palette-editor" class="custom-palette-editor" style="display: none;">
+                            <div class="custom-palette-controls">
+                                <button class="btn btn-small" id="add-color-btn" title="Add color">+ Add</button>
+                                <button class="btn btn-small" id="remove-color-btn" title="Remove last color">- Remove</button>
+                            </div>
+                            <div class="custom-palette-info">
+                                <span id="color-count">2</span> / 16 colors
+                            </div>
+                        </div>
+                        <!-- Color match method -->
+                        <div class="form-group">
+                            <label for="color-match">Color Match</label>
+                            <select id="color-match">
+                                <option value="euclidean">Euclidean (RGB)</option>
+                                <option value="luminance">Luminance</option>
+                                <option value="ciede2000">CIE DE2000 (Best)</option>
+                                <option value="cie94">CIE 94</option>
+                                <option value="cie76">CIE 76</option>
+                            </select>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- View Controls -->
+                <section class="panel view-panel">
+                    <div class="panel-header">
+                        <h3>View</h3>
+                    </div>
+                    <div class="panel-content">
+                        <div class="view-controls">
+                            <button class="btn btn-small" data-action="zoom-out">-</button>
+                            <span id="zoom-display">100%</span>
+                            <button class="btn btn-small" data-action="zoom-in">+</button>
+                            <button class="btn btn-small" data-action="fit-to-view">Fit</button>
+                        </div>
+                        <div class="toggle-group">
+                            <label class="toggle">
+                                <input type="checkbox" id="show-original">
+                                <span>Show Original</span>
+                            </label>
+                        </div>
+                    </div>
+                </section>
+            </aside>
+        </main>
+
+        <!-- Timeline (Video mode) -->
+        <footer id="timeline" class="timeline hidden">
+            <div class="timeline-controls">
+                <button class="btn-icon" data-action="frame-prev" title="Previous frame">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M6 6h2v12H6V6zm3.5 6l8.5 6V6l-8.5 6z"/>
+                    </svg>
+                </button>
+                <button class="btn-icon" data-action="play-pause" title="Play/Pause">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M8 5v14l11-7z"/>
+                    </svg>
+                </button>
+                <button class="btn-icon" data-action="frame-next" title="Next frame">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="timeline-scrubber">
+                <input type="range" id="timeline-slider" min="0" max="100" value="0">
+            </div>
+            <div class="timeline-info">
+                <span id="frame-counter">0 / 0</span>
+            </div>
+        </footer>
+
+        <!-- Status Bar -->
+        <footer class="status-bar">
+            <span id="status-message">Ready</span>
+            <span id="status-coords"></span>
+            <span id="status-progress" class="hidden">
+                <progress id="progress-bar" value="0" max="100"></progress>
+                <span id="progress-text">0%</span>
+            </span>
+        </footer>
+    </div>
+
+    <!-- Hidden file input -->
+    <input type="file" id="file-input" accept="image/png,image/jpeg,image/gif,image/bmp,image/webp" style="display: none;">
+
+    <!-- Main script -->
+    <script type="module" src="./src/main.ts"></script>
+</body>
+</html>

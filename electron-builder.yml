@@ -1,8 +1,8 @@
 # electron-builder configuration
 # https://www.electron.build/configuration
 
-appId: com.dithertoy.app
-productName: dithertoy
+appId: com.ditherme.app
+productName: ditherme
 
 # Output directories
 directories:
@@ -101,7 +101,7 @@ nsis:
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
   createStartMenuShortcut: true
-  shortcutName: dithertoy
+  shortcutName: ditherme
   artifactName: "${productName}-Setup-${version}.${ext}"
 
 # Portable configuration

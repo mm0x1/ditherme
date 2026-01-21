@@ -207,20 +207,20 @@ export function createMenu(mainWindow: BrowserWindow): void {
                 },
                 { type: 'separator' },
                 {
-                    label: 'About dithertoy',
+                    label: 'About ditherme',
                     click: () => sendMenuAction(mainWindow, 'about')
                 },
                 { type: 'separator' },
                 {
                     label: 'Learn More',
                     click: async () => {
-                        await shell.openExternal('https://github.com/yourusername/dithertoy');
+                        await shell.openExternal('https://github.com/yourusername/ditherme');
                     }
                 },
                 {
                     label: 'Report an Issue',
                     click: async () => {
-                        await shell.openExternal('https://github.com/yourusername/dithertoy/issues');
+                        await shell.openExternal('https://github.com/yourusername/ditherme/issues');
                     }
                 }
             ]

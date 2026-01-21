@@ -71,7 +71,7 @@ jobs:
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ inputs.version }}
-          name: dithertoy ${{ inputs.version }}
+          name: ditherme ${{ inputs.version }}
           files: artifacts/*
           draft: false
           prerelease: false

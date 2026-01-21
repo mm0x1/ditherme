@@ -1,5 +1,5 @@
 /**
- * Video processing types for dithertoy
+ * Video processing types for ditherme
  */
 
 /**

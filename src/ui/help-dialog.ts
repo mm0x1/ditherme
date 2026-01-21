@@ -82,7 +82,7 @@ export function showHelpDialog(): void {
                 ${shortcutsHtml}
             </div>
             <div class="help-footer">
-                <p><strong>dithertoy</strong> - Professional Dithering Application</p>
+                <p><strong>ditherme</strong> - Professional Dithering Application</p>
                 <p class="help-tips">
                     Drag and drop images to load them. Star your favorite algorithms for quick access.
                 </p>
@@ -141,7 +141,7 @@ export function showAboutDialog(): void {
             <div class="about-body">
                 <div class="about-logo">
                     <span class="logo-icon">◐</span>
-                    <span class="logo-text">dithertoy</span>
+                    <span class="logo-text">ditherme</span>
                 </div>
                 <p class="about-version">Version 1.0.0</p>
                 <p class="about-description">
@@ -160,7 +160,7 @@ export function showAboutDialog(): void {
                     </ul>
                 </div>
                 <p class="about-copyright">
-                    &copy; 2024 dithertoy
+                    &copy; 2024 ditherme
                 </p>
             </div>
         </div>

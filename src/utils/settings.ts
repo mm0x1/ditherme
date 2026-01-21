@@ -4,7 +4,7 @@
 
 import { UserSettings, DEFAULT_SETTINGS } from '../types/settings.ts';
 
-const STORAGE_KEY = 'dithertoy_settings';
+const STORAGE_KEY = 'ditherme_settings';
 
 /**
  * Settings manager with localStorage persistence

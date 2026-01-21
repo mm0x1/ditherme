@@ -1,5 +1,5 @@
 /**
- * dithertoy - Professional Dithering Application
+ * ditherme - Professional Dithering Application
  * Main entry point
  */
 
@@ -66,7 +66,7 @@ function updatePerfIndicator(ms: number): void {
  * Initialize the application
  */
 function init(): void {
-    console.log('dithertoy initializing...');
+    console.log('ditherme initializing...');
     console.time('total-init');
 
     try {
@@ -168,11 +168,11 @@ function init(): void {
 
         // Ready
         setStatus('Ready - Drop an image or use File > Open');
-        console.log('dithertoy ready');
+        console.log('ditherme ready');
         console.timeEnd('total-init');
 
     } catch (error) {
-        console.error('Failed to initialize dithertoy:', error);
+        console.error('Failed to initialize ditherme:', error);
         setStatus('Initialization failed');
     }
 }

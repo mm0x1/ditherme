@@ -8,7 +8,11 @@ import { initViewport, initViewControls } from './ui/viewport.ts';
 import { initSidebar } from './ui/sidebar.ts';
 import { initAdjustments, initDitherSettings } from './ui/adjustments.ts';
 import { initPalette } from './ui/palette.ts';
-import { initDragAndDrop, initFileInput, initClipboard, initSaveHandlers, downloadImage } from './engine/image.ts';
+import { initDragAndDrop, initFileInput, initClipboard, initSaveHandlers, downloadImage, downloadImageWithPreset } from './engine/image.ts';
+import { settings } from './utils/settings.ts';
+import { DEFAULT_EXPORT_PRESETS } from './types/settings.ts';
+import { showHelpDialog } from './ui/help-dialog.ts';
+import { showBatchDialog } from './ui/batch-dialog.ts';
 import { initDitherEngine } from './engine/dither.ts';
 import { initVideoEngine, getVideoManager } from './engine/video/index.ts';
 import { initTimeline, setTimeline } from './ui/video/timeline.ts';
@@ -41,12 +45,30 @@ function setStatus(message: string): void {
 }
 
 /**
+ * Update performance indicator with dither time
+ */
+function updatePerfIndicator(ms: number): void {
+    const perfEl = document.getElementById('status-perf');
+    const timeEl = document.getElementById('dither-time');
+
+    if (perfEl && timeEl) {
+        perfEl.classList.remove('hidden');
+        // Format: show ms if under 1s, otherwise show seconds
+        timeEl.textContent = ms < 1000
+            ? `${ms.toFixed(0)}ms`
+            : `${(ms / 1000).toFixed(2)}s`;
+    }
+}
+
+/**
  * Initialize the application
  */
 function init(): void {
     console.log('dithertoy initializing...');
+    console.time('total-init');
 
     try {
+        console.time('coloris-init');
         // Initialize Coloris color picker
         Coloris.init();
         Coloris({
@@ -58,6 +80,7 @@ function init(): void {
             focusInput: true,
             selectInput: false
         });
+        console.timeEnd('coloris-init');
 
         // Initialize UI components
         const sidebar = getElement('sidebar');
@@ -65,12 +88,17 @@ function init(): void {
         const adjustments = getElement('adjustments');
         const palette = getElement('palette');
 
+        console.time('viewport-init');
         // Initialize viewport (canvas with zoom/pan)
         const viewportControls = initViewport(viewport);
+        console.timeEnd('viewport-init');
 
+        console.time('sidebar-init');
         // Initialize sidebar (algorithm selection)
         initSidebar(sidebar);
+        console.timeEnd('sidebar-init');
 
+        console.time('adjustments-init');
         // Initialize adjustments panel
         initAdjustments(adjustments);
 
@@ -82,7 +110,9 @@ function init(): void {
 
         // Initialize view controls
         initViewControls(viewportControls);
+        console.timeEnd('adjustments-init');
 
+        console.time('handlers-init');
         // Initialize image loading
         initDragAndDrop(viewport);
         initFileInput();
@@ -112,6 +142,7 @@ function init(): void {
 
         // Initialize keyboard shortcuts
         initKeyboardShortcuts();
+        console.timeEnd('handlers-init');
 
         // Listen for dither events
         app.on('ditherstart', (e) => {
@@ -119,7 +150,9 @@ function init(): void {
         });
 
         app.on('dithercomplete', (e) => {
-            setStatus(`Done (${e.detail.duration.toFixed(0)}ms)`);
+            const ms = e.detail.duration;
+            setStatus('Done');
+            updatePerfIndicator(ms);
         });
 
         app.on('dithererror', (e) => {
@@ -130,6 +163,7 @@ function init(): void {
         // Ready
         setStatus('Ready - Drop an image or use File > Open');
         console.log('dithertoy ready');
+        console.timeEnd('total-init');
 
     } catch (error) {
         console.error('Failed to initialize dithertoy:', error);
@@ -149,6 +183,68 @@ function initMenus(): void {
                 (dd as HTMLElement).style.display = '';
             });
         }
+    });
+
+    // Undo menu action
+    document.querySelectorAll('[data-action="undo"]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            if (app.canUndo()) {
+                app.undo();
+                setStatus('Undone');
+            }
+        });
+    });
+
+    // Redo menu action
+    document.querySelectorAll('[data-action="redo"]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            if (app.canRedo()) {
+                app.redo();
+                setStatus('Redone');
+            }
+        });
+    });
+
+    // Batch dither action
+    document.querySelectorAll('[data-action="batch"]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            showBatchDialog();
+        });
+    });
+
+    // Export preset actions
+    document.querySelectorAll('[data-action="export-preset"]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const presetId = (btn as HTMLElement).dataset.preset;
+            if (!presetId) return;
+
+            const state = app.getState();
+            const image = state.ditheredImage || state.sourceImage;
+
+            if (!image) {
+                setStatus('No image to export');
+                return;
+            }
+
+            // Find preset in defaults or user presets
+            const allPresets = [...DEFAULT_EXPORT_PRESETS, ...settings.get('exportPresets')];
+            const preset = allPresets.find(p => p.id === presetId);
+
+            if (!preset) {
+                setStatus('Export preset not found');
+                return;
+            }
+
+            const fileName = state.originalFileName || 'image';
+            setStatus(`Exporting as ${preset.name}...`);
+
+            try {
+                await downloadImageWithPreset(image, fileName, preset);
+                setStatus(`Exported: ${preset.name}`);
+            } catch (error) {
+                setStatus(`Export failed: ${error instanceof Error ? error.message : String(error)}`);
+            }
+        });
     });
 }
 
@@ -193,6 +289,30 @@ function initKeyboardShortcuts(): void {
             if (state.isVideoMode && state.videoMetadata) {
                 handleVideoExport();
             }
+        }
+
+        // Ctrl/Cmd + Z: Undo
+        if (cmdOrCtrl && e.key === 'z' && !e.shiftKey) {
+            e.preventDefault();
+            if (app.canUndo()) {
+                app.undo();
+                setStatus('Undone');
+            }
+        }
+
+        // Ctrl/Cmd + Shift + Z or Ctrl/Cmd + Y: Redo
+        if (cmdOrCtrl && ((e.key === 'z' && e.shiftKey) || e.key === 'y')) {
+            e.preventDefault();
+            if (app.canRedo()) {
+                app.redo();
+                setStatus('Redone');
+            }
+        }
+
+        // ?: Show help dialog
+        if (e.key === '?' || (e.key === '/' && e.shiftKey)) {
+            e.preventDefault();
+            showHelpDialog();
         }
 
         // Escape: Deselect / close dialogs

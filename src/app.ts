@@ -80,6 +80,7 @@ const initialState: AppState = {
 class App extends EventTarget {
     private state: AppState;
     private stateHistory: AppState[] = [];
+    private redoStack: AppState[] = [];
     private maxHistoryLength = 50;
 
     constructor() {
@@ -220,12 +221,15 @@ class App extends EventTarget {
 
     /**
      * Save current state to history (for undo)
+     * Clears the redo stack since a new action invalidates redo history
      */
     saveToHistory(): void {
         this.stateHistory.push({ ...this.state });
         if (this.stateHistory.length > this.maxHistoryLength) {
             this.stateHistory.shift();
         }
+        // Clear redo stack on new action
+        this.redoStack = [];
     }
 
     /**
@@ -236,11 +240,21 @@ class App extends EventTarget {
     }
 
     /**
+     * Check if can redo
+     */
+    canRedo(): boolean {
+        return this.redoStack.length > 0;
+    }
+
+    /**
      * Undo to previous state
      */
     undo(): void {
         const previousState = this.stateHistory.pop();
         if (previousState) {
+            // Push current state to redo stack
+            this.redoStack.push({ ...this.state });
+
             const oldState = { ...this.state };
             this.state = previousState;
 
@@ -248,6 +262,28 @@ class App extends EventTarget {
                 oldState,
                 newState: this.state,
                 changes: this.state // All properties changed on undo
+            };
+
+            this.dispatchEvent(createAppEvent('statechange', detail));
+        }
+    }
+
+    /**
+     * Redo previously undone state
+     */
+    redo(): void {
+        const nextState = this.redoStack.pop();
+        if (nextState) {
+            // Push current state back to history
+            this.stateHistory.push({ ...this.state });
+
+            const oldState = { ...this.state };
+            this.state = nextState;
+
+            const detail: StateChangeDetail = {
+                oldState,
+                newState: this.state,
+                changes: this.state // All properties changed on redo
             };
 
             this.dispatchEvent(createAppEvent('statechange', detail));

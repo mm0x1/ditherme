@@ -245,6 +245,68 @@ export async function downloadImage(
 }
 
 /**
+ * Scale ImageData using nearest-neighbor interpolation (pixel-perfect)
+ */
+function scaleImageData(imageData: ImageData, scale: number): ImageData {
+    if (scale === 1) return imageData;
+
+    const newWidth = Math.round(imageData.width * scale);
+    const newHeight = Math.round(imageData.height * scale);
+
+    const canvas = document.createElement('canvas');
+    canvas.width = newWidth;
+    canvas.height = newHeight;
+
+    const ctx = canvas.getContext('2d')!;
+    ctx.imageSmoothingEnabled = false; // Nearest-neighbor for pixel-perfect scaling
+
+    // Draw original to temp canvas
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = imageData.width;
+    tempCanvas.height = imageData.height;
+    tempCanvas.getContext('2d')!.putImageData(imageData, 0, 0);
+
+    // Scale to target size
+    ctx.drawImage(tempCanvas, 0, 0, newWidth, newHeight);
+
+    return ctx.getImageData(0, 0, newWidth, newHeight);
+}
+
+/**
+ * Download image with export preset settings
+ */
+export async function downloadImageWithPreset(
+    imageData: ImageData,
+    fileName: string,
+    preset: { format: 'png' | 'jpeg' | 'webp'; quality: number; scale: number }
+): Promise<void> {
+    // Scale image if needed
+    let outputData = imageData;
+    if (preset.scale !== 1) {
+        outputData = scaleImageData(imageData, preset.scale);
+    }
+
+    const format = `image/${preset.format}` as 'image/png' | 'image/jpeg' | 'image/webp';
+    const quality = preset.quality / 100;
+
+    // Generate filename with correct extension
+    const baseName = fileName.replace(/\.[^/.]+$/, '');
+    const extension = preset.format === 'jpeg' ? 'jpg' : preset.format;
+    const finalFileName = `${baseName}_dithered.${extension}`;
+
+    const blob = await imageDataToBlob(outputData, format, quality);
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = finalFileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+/**
  * Set up drag and drop handlers for the viewport
  */
 export function initDragAndDrop(viewport: HTMLElement): void {

@@ -1,6 +1,7 @@
 import { app } from '../app.ts';
 import type { Algorithm, AlgorithmCategory, DitherMode } from '../types/index.ts';
-import { ALGORITHMS, getAlgorithmsByCategory } from '../algorithms/index.ts';
+import { ALGORITHMS, getAlgorithmsByCategory, shouldUseWasm, isWasmLoaded } from '../algorithms/index.ts';
+import { settings } from '../utils/settings.ts';
 
 /**
  * Category display order
@@ -34,17 +35,60 @@ export function initSidebar(container: HTMLElement): void {
     const algorithmList = algorithmListEl;
 
     /**
+     * Render a single algorithm item
+     */
+    function renderAlgorithmItem(algo: { id: string; name: string }, currentAlgorithm: string): string {
+        const isSelected = algo.id === currentAlgorithm;
+        const isFavorite = settings.isFavorite(algo.id);
+        const showWasmBadge = settings.get('showWasmBadges') &&
+                              isWasmLoaded() &&
+                              shouldUseWasm(algo.id as Algorithm);
+        return `
+            <div class="algorithm-item${isSelected ? ' selected' : ''}" data-id="${algo.id}">
+                <button class="favorite-btn${isFavorite ? ' active' : ''}"
+                        data-favorite-id="${algo.id}"
+                        title="${isFavorite ? 'Remove from favorites' : 'Add to favorites'}">
+                    ${isFavorite ? '★' : '☆'}
+                </button>
+                <span class="algorithm-name">${algo.name}</span>
+                ${showWasmBadge ? '<span class="wasm-badge" title="WASM accelerated - runs faster via WebAssembly">WASM</span>' : ''}
+            </div>
+        `;
+    }
+
+    /**
      * Render algorithm list for current mode
      */
     function renderAlgorithmList(filter = ''): void {
+        console.time('renderAlgorithmList');
         const state = app.getState();
         const mode = state.mode;
         const currentAlgorithm = state.algorithm;
 
         const grouped = getAlgorithmsByCategory(mode);
+        const favorites = settings.get('favoriteAlgorithms');
 
         let html = '';
 
+        // Render favorites section if there are any
+        if (favorites.length > 0 && !filter) {
+            // Get favorite algorithms that match current mode
+            const favoriteAlgos = favorites
+                .map(id => ALGORITHMS[id as Algorithm])
+                .filter(algo => algo && (mode === 'mono' ? !algo.id.endsWith('-color') : algo.id.endsWith('-color')));
+
+            if (favoriteAlgos.length > 0) {
+                html += `<div class="algorithm-category favorites-category">
+                    <span class="category-star">★</span> Favorites
+                </div>`;
+
+                for (const algo of favoriteAlgos) {
+                    html += renderAlgorithmItem(algo, currentAlgorithm);
+                }
+            }
+        }
+
+        // Render regular categories
         for (const category of CATEGORY_ORDER) {
             const algorithms = grouped.get(category);
             if (!algorithms || algorithms.length === 0) continue;
@@ -61,12 +105,7 @@ export function initSidebar(container: HTMLElement): void {
 
             // Render algorithms
             for (const algo of filtered) {
-                const isSelected = algo.id === currentAlgorithm;
-                html += `
-                    <div class="algorithm-item${isSelected ? ' selected' : ''}" data-id="${algo.id}">
-                        ${algo.name}
-                    </div>
-                `;
+                html += renderAlgorithmItem(algo, currentAlgorithm);
             }
         }
 
@@ -75,6 +114,26 @@ export function initSidebar(container: HTMLElement): void {
         }
 
         algorithmList.innerHTML = html;
+
+        // Attach favorite button listeners
+        attachFavoriteListeners();
+        console.timeEnd('renderAlgorithmList');
+    }
+
+    /**
+     * Attach click listeners to favorite buttons
+     */
+    function attachFavoriteListeners(): void {
+        algorithmList.querySelectorAll('.favorite-btn').forEach(btn => {
+            btn.addEventListener('click', (e: Event) => {
+                e.stopPropagation(); // Don't trigger algorithm selection
+                const id = (btn as HTMLElement).dataset.favoriteId;
+                if (id) {
+                    settings.toggleFavorite(id);
+                    renderAlgorithmList(searchInput?.value || '');
+                }
+            });
+        });
     }
 
     /**

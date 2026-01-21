@@ -3,6 +3,7 @@ import type { Algorithm, Palette, AlgorithmOptions, ImageAdjustments, ColorMatch
 import { applyAdjustments, hasAdjustments } from './adjustments.ts';
 import { dither as ditherAlgorithm, ditherAsync, initDitherWasm } from '../algorithms/index.ts';
 import { getColorDistanceFunction } from './color.ts';
+import { imageCache } from './image-cache.ts';
 
 /**
  * Debounce timer for dithering
@@ -217,6 +218,18 @@ export function triggerDither(): void {
 
         if (!state.sourceImage) return;
 
+        // Check cache first
+        const cachedResult = imageCache.get(state);
+        if (cachedResult) {
+            app.setState({
+                ditheredImage: cachedResult,
+                isProcessing: false
+            });
+            // Emit completion with 0ms duration to indicate cache hit
+            app.emit('dithercomplete', { result: cachedResult, duration: 0 });
+            return;
+        }
+
         // Mark as processing
         app.setState({ isProcessing: true });
         app.emit('ditherstart', { algorithm: state.algorithm });
@@ -232,6 +245,9 @@ export function triggerDither(): void {
                 state.pixelScale,
                 state.levels
             );
+
+            // Cache the result
+            imageCache.set(state, result);
 
             app.setState({
                 ditheredImage: result,
@@ -263,8 +279,9 @@ export async function initDitherEngine(): Promise<void> {
         }
     });
 
-    // Also trigger on image load
+    // Also trigger on image load and clear cache for new source
     app.on('imageloaded', () => {
+        imageCache.invalidateForNewSource();
         triggerDither();
     });
 }

@@ -19,6 +19,12 @@
                     <button class="menu-action" data-action="save">Save Image</button>
                     <button class="menu-action" data-action="save-as">Save As...</button>
                     <div class="menu-separator"></div>
+                    <span class="menu-label-inline">Quick Export:</span>
+                    <button class="menu-action" data-action="export-preset" data-preset="web-png">Web (PNG)</button>
+                    <button class="menu-action" data-action="export-preset" data-preset="web-jpg">Web (JPEG 80%)</button>
+                    <button class="menu-action" data-action="export-preset" data-preset="hq-png">High Quality (PNG 2x)</button>
+                    <button class="menu-action" data-action="export-preset" data-preset="social">Social Media (JPEG)</button>
+                    <div class="menu-separator"></div>
                     <button class="menu-action" data-action="export-video">Export Video...</button>
                     <button class="menu-action" data-action="batch">Batch Dither...</button>
                 </div>
@@ -26,6 +32,9 @@
             <div class="menu-item" data-menu="edit">
                 <span class="menu-label">Edit</span>
                 <div class="menu-dropdown">
+                    <button class="menu-action" data-action="undo" id="menu-undo">Undo</button>
+                    <button class="menu-action" data-action="redo" id="menu-redo">Redo</button>
+                    <div class="menu-separator"></div>
                     <button class="menu-action" data-action="copy">Copy</button>
                     <button class="menu-action" data-action="paste">Paste</button>
                     <div class="menu-separator"></div>
@@ -288,6 +297,10 @@
         <!-- Status Bar -->
         <footer class="status-bar">
             <span id="status-message">Ready</span>
+            <span id="status-perf" class="status-perf hidden" title="Dither processing time">
+                <span class="perf-icon">&#9201;</span>
+                <span id="dither-time">0ms</span>
+            </span>
             <span id="status-coords"></span>
             <span id="status-progress" class="hidden">
                 <progress id="progress-bar" value="0" max="100"></progress>

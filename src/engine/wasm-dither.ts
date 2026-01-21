@@ -583,48 +583,48 @@ export async function wasmDitherMono(
     }
 }
 
+// Pre-computed Set of WASM-accelerated algorithms (created once at module load)
+const WASM_ALGORITHMS = new Set([
+    // Additional error diffusion kernels (not in JS)
+    'shiau-fan3', 'xot', 'diagonal', 'diffusion-1d', 'diffusion-2d',
+    'steve-pigeon', 'robert-kist',
+    // Additional ordered matrices (not in JS)
+    'ordered-blue-noise',
+    'ordered-clustered-v1', 'ordered-clustered-v2', 'ordered-clustered-v3',
+    'ordered-clustered-v4', 'ordered-clustered-v5', 'ordered-clustered-v6',
+    'ordered-clustered-v7', 'ordered-clustered-v8', 'ordered-clustered-v9',
+    'ordered-clustered-v10', 'ordered-clustered-v11',
+    'ordered-dispersed-v1', 'ordered-dispersed-v2', 'ordered-ulichney-void',
+    'ordered-nonrect-v1', 'ordered-nonrect-v2', 'ordered-nonrect-v3', 'ordered-nonrect-v4',
+    'ordered-ulichney-bayer5', 'ordered-ulichney-standard', 'ordered-ulichney-clustered',
+    'ordered-diagonal',
+    'ordered-im-circle5', 'ordered-im-circle6', 'ordered-im-circle7',
+    'ordered-im-45deg4', 'ordered-im-45deg6', 'ordered-im-45deg8',
+    'ordered-variable2', 'ordered-variable4', 'ordered-interleaved-gradient',
+    // All Riemersma variants
+    'riemersma-hilbert', 'riemersma-hilbert-mod', 'riemersma-peano',
+    'riemersma-fass0', 'riemersma-fass1', 'riemersma-fass2',
+    'riemersma-gosper', 'riemersma-fass-spiral',
+    // Pattern dithering
+    'pattern-2x2', 'pattern-3x3-v1', 'pattern-3x3-v2', 'pattern-3x3-v3',
+    'pattern-4x4', 'pattern-5x2',
+    // Dot diffusion
+    'dot-diffusion-knuth', 'dot-diffusion-mini-knuth', 'dot-diffusion-optimized-knuth',
+    'dot-diffusion-mese-8x8', 'dot-diffusion-mese-16x16',
+    'dot-diffusion-guo-liu-8x8', 'dot-diffusion-guo-liu-16x16',
+    'dot-diffusion-spiral', 'dot-diffusion-inverted-spiral',
+    // Dot Lippens
+    'dot-lippens-li1', 'dot-lippens-li2', 'dot-lippens-li3',
+    'dot-lippens-guo', 'dot-lippens-mese', 'dot-lippens-knuth',
+    // Variable error diffusion
+    'variable-ostromoukhov', 'variable-zhou-fang',
+    // Special algorithms
+    'grid', 'dbs', 'kacker-allebach',
+]);
+
 /**
  * Check if an algorithm should use WASM
  */
 export function shouldUseWasm(algorithm: Algorithm): boolean {
-    // List of algorithms that benefit from WASM
-    const wasmAlgorithms = [
-        // Additional error diffusion kernels (not in JS)
-        'shiau-fan3', 'xot', 'diagonal', 'diffusion-1d', 'diffusion-2d',
-        'steve-pigeon', 'robert-kist',
-        // Additional ordered matrices (not in JS)
-        'ordered-blue-noise',
-        'ordered-clustered-v1', 'ordered-clustered-v2', 'ordered-clustered-v3',
-        'ordered-clustered-v4', 'ordered-clustered-v5', 'ordered-clustered-v6',
-        'ordered-clustered-v7', 'ordered-clustered-v8', 'ordered-clustered-v9',
-        'ordered-clustered-v10', 'ordered-clustered-v11',
-        'ordered-dispersed-v1', 'ordered-dispersed-v2', 'ordered-ulichney-void',
-        'ordered-nonrect-v1', 'ordered-nonrect-v2', 'ordered-nonrect-v3', 'ordered-nonrect-v4',
-        'ordered-ulichney-bayer5', 'ordered-ulichney-standard', 'ordered-ulichney-clustered',
-        'ordered-diagonal',
-        'ordered-im-circle5', 'ordered-im-circle6', 'ordered-im-circle7',
-        'ordered-im-45deg4', 'ordered-im-45deg6', 'ordered-im-45deg8',
-        'ordered-variable2', 'ordered-variable4', 'ordered-interleaved-gradient',
-        // All Riemersma variants
-        'riemersma-hilbert', 'riemersma-hilbert-mod', 'riemersma-peano',
-        'riemersma-fass0', 'riemersma-fass1', 'riemersma-fass2',
-        'riemersma-gosper', 'riemersma-fass-spiral',
-        // Pattern dithering
-        'pattern-2x2', 'pattern-3x3-v1', 'pattern-3x3-v2', 'pattern-3x3-v3',
-        'pattern-4x4', 'pattern-5x2',
-        // Dot diffusion
-        'dot-diffusion-knuth', 'dot-diffusion-mini-knuth', 'dot-diffusion-optimized-knuth',
-        'dot-diffusion-mese-8x8', 'dot-diffusion-mese-16x16',
-        'dot-diffusion-guo-liu-8x8', 'dot-diffusion-guo-liu-16x16',
-        'dot-diffusion-spiral', 'dot-diffusion-inverted-spiral',
-        // Dot Lippens
-        'dot-lippens-li1', 'dot-lippens-li2', 'dot-lippens-li3',
-        'dot-lippens-guo', 'dot-lippens-mese', 'dot-lippens-knuth',
-        // Variable error diffusion
-        'variable-ostromoukhov', 'variable-zhou-fang',
-        // Special algorithms
-        'grid', 'dbs', 'kacker-allebach',
-    ];
-
-    return wasmAlgorithms.includes(algorithm);
+    return WASM_ALGORITHMS.has(algorithm);
 }

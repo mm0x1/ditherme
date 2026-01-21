@@ -376,3 +376,6 @@ export async function initDitherWasm(): Promise<boolean> {
 export function isWasmDitherAvailable(): boolean {
     return isWasmLoaded();
 }
+
+// Re-export WASM detection functions for UI
+export { shouldUseWasm, isWasmLoaded };

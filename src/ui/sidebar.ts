@@ -358,6 +358,11 @@ export function initSidebar(container: HTMLElement): void {
         }
     });
 
+    // Re-render when WASM loads to show badges
+    app.on('wasmloaded', () => {
+        renderAlgorithmList(searchInput?.value || '');
+    });
+
     // Initial render
     renderAlgorithmList();
     renderOptions();

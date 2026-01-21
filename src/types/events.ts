@@ -11,6 +11,7 @@ export interface AppEventMap {
     'dithercomplete': CustomEvent<{ result: ImageData; duration: number }>;
     'dithererror': CustomEvent<{ error: Error }>;
     'progress': CustomEvent<{ progress: number; message?: string }>;
+    'wasmloaded': CustomEvent<void>;
     // Video events
     'videoloaded': CustomEvent<{ metadata: VideoMetadata; fileName: string }>;
     'videoframechange': CustomEvent<{ index: number; frame: DitheredFrame }>;

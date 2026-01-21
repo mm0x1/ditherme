@@ -269,6 +269,8 @@ export async function initDitherEngine(): Promise<void> {
     initDitherWasm().then(success => {
         if (success) {
             console.log('WASM dithering enabled - all algorithms now available');
+            // Notify UI that WASM is ready (for WASM badges)
+            app.emit('wasmloaded', undefined as unknown as void);
         }
     });
 

@@ -11,8 +11,8 @@ export interface ImageAdjustments {
     contrast: number;      // -100 to 100
     gamma: number;         // 0.1 to 3.0
     saturation?: number;   // -100 to 100 (color mode only)
-    blackPoint: number;    // 0-50, pixels below this luminance become black (0 = disabled)
-    whitePoint: number;    // 205-255, pixels above this luminance become white (255 = disabled)
+    blackPoint: number;    // 0-128, input black level for levels adjustment (0 = disabled)
+    whitePoint: number;    // 128-255, input white level for levels adjustment (255 = disabled)
 }
 
 /**

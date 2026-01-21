@@ -37,12 +37,14 @@ export function initSidebar(container: HTMLElement): void {
     /**
      * Render a single algorithm item
      */
-    function renderAlgorithmItem(algo: { id: string; name: string }, currentAlgorithm: string): string {
+    function renderAlgorithmItem(algo: { id: string; name: string; warning?: string }, currentAlgorithm: string): string {
         const isSelected = algo.id === currentAlgorithm;
         const isFavorite = settings.isFavorite(algo.id);
         const showWasmBadge = settings.get('showWasmBadges') &&
                               isWasmLoaded() &&
                               shouldUseWasm(algo.id as Algorithm);
+        const warning = algo.warning;
+
         return `
             <div class="algorithm-item${isSelected ? ' selected' : ''}" data-id="${algo.id}">
                 <button class="favorite-btn${isFavorite ? ' active' : ''}"
@@ -51,6 +53,7 @@ export function initSidebar(container: HTMLElement): void {
                     ${isFavorite ? '★' : '☆'}
                 </button>
                 <span class="algorithm-name">${algo.name}</span>
+                ${warning ? `<span class="info-badge" data-tooltip="${warning}">i</span>` : ''}
                 ${showWasmBadge ? '<span class="wasm-badge" data-tooltip="WASM accelerated">WASM</span>' : ''}
             </div>
         `;

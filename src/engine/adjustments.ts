@@ -41,6 +41,27 @@ export function applyAdjustments(
         gammaLUT[i] = Math.round(255 * Math.pow(i / 255, 1 / gammaValue));
     }
 
+    // Build levels lookup table for black/white point adjustment
+    // Maps input range [blackPoint, whitePoint] to output range [0, 255]
+    const levelsLUT = new Uint8ClampedArray(256);
+    const range = whitePointValue - blackPointValue;
+    if (hasBlackWhitePoint && range > 0) {
+        for (let i = 0; i < 256; i++) {
+            if (i <= blackPointValue) {
+                levelsLUT[i] = 0;
+            } else if (i >= whitePointValue) {
+                levelsLUT[i] = 255;
+            } else {
+                levelsLUT[i] = Math.round(((i - blackPointValue) / range) * 255);
+            }
+        }
+    } else {
+        // No adjustment needed, identity mapping
+        for (let i = 0; i < 256; i++) {
+            levelsLUT[i] = i;
+        }
+    }
+
     // Process each pixel
     for (let i = 0; i < data.length; i += 4) {
         let r = data[i];
@@ -77,23 +98,13 @@ export function applyAdjustments(
             b = gray + saturationFactor * (b - gray);
         }
 
-        // Apply black/white point clipping
+        // Apply black/white point levels adjustment
+        // This remaps the tonal range: [blackPoint, whitePoint] -> [0, 255]
         if (hasBlackWhitePoint) {
-            // Calculate luminance to determine if pixel should be clipped
-            const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
-
-            // Black point: force pixels below threshold to pure black
-            if (blackPointValue > 0 && luminance <= blackPointValue) {
-                r = 0;
-                g = 0;
-                b = 0;
-            }
-            // White point: force pixels above threshold to pure white
-            else if (whitePointValue < 255 && luminance >= whitePointValue) {
-                r = 255;
-                g = 255;
-                b = 255;
-            }
+            // Clamp to 0-255 range before LUT lookup
+            r = levelsLUT[clamp(Math.round(r))];
+            g = levelsLUT[clamp(Math.round(g))];
+            b = levelsLUT[clamp(Math.round(b))];
         }
 
         // Clamp and store

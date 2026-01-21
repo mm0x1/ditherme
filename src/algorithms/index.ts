@@ -88,52 +88,52 @@ export const ALGORITHMS: Record<Algorithm, AlgorithmInfo> = {
     'ordered-variable4': { id: 'ordered-variable4', name: 'Variable 4×4', category: 'Ordered' },
     'ordered-interleaved-gradient': { id: 'ordered-interleaved-gradient', name: 'Interleaved Gradient', category: 'Ordered' },
 
-    // Riemersma
-    'riemersma-hilbert': { id: 'riemersma-hilbert', name: 'Hilbert Curve', category: 'Riemersma' },
-    'riemersma-hilbert-mod': { id: 'riemersma-hilbert-mod', name: 'Hilbert Modified', category: 'Riemersma' },
-    'riemersma-peano': { id: 'riemersma-peano', name: 'Peano Curve', category: 'Riemersma' },
-    'riemersma-fass0': { id: 'riemersma-fass0', name: 'Fass 0', category: 'Riemersma' },
-    'riemersma-fass1': { id: 'riemersma-fass1', name: 'Fass 1', category: 'Riemersma' },
-    'riemersma-fass2': { id: 'riemersma-fass2', name: 'Fass 2', category: 'Riemersma' },
-    'riemersma-gosper': { id: 'riemersma-gosper', name: 'Gosper Curve', category: 'Riemersma' },
-    'riemersma-fass-spiral': { id: 'riemersma-fass-spiral', name: 'Fass Spiral', category: 'Riemersma' },
+    // Riemersma (binary output only - uses first/last palette colors)
+    'riemersma-hilbert': { id: 'riemersma-hilbert', name: 'Hilbert Curve', category: 'Riemersma', warning: '2-color output only' },
+    'riemersma-hilbert-mod': { id: 'riemersma-hilbert-mod', name: 'Hilbert Modified', category: 'Riemersma', warning: '2-color output only' },
+    'riemersma-peano': { id: 'riemersma-peano', name: 'Peano Curve', category: 'Riemersma', warning: '2-color output only' },
+    'riemersma-fass0': { id: 'riemersma-fass0', name: 'Fass 0', category: 'Riemersma', warning: '2-color output only' },
+    'riemersma-fass1': { id: 'riemersma-fass1', name: 'Fass 1', category: 'Riemersma', warning: '2-color output only' },
+    'riemersma-fass2': { id: 'riemersma-fass2', name: 'Fass 2', category: 'Riemersma', warning: '2-color output only' },
+    'riemersma-gosper': { id: 'riemersma-gosper', name: 'Gosper Curve', category: 'Riemersma', warning: '2-color output only' },
+    'riemersma-fass-spiral': { id: 'riemersma-fass-spiral', name: 'Fass Spiral', category: 'Riemersma', warning: '2-color output only' },
 
-    // Pattern
-    'pattern-2x2': { id: 'pattern-2x2', name: 'Pattern 2×2', category: 'Pattern' },
-    'pattern-3x3-v1': { id: 'pattern-3x3-v1', name: 'Pattern 3×3 v1', category: 'Pattern' },
-    'pattern-3x3-v2': { id: 'pattern-3x3-v2', name: 'Pattern 3×3 v2', category: 'Pattern' },
-    'pattern-3x3-v3': { id: 'pattern-3x3-v3', name: 'Pattern 3×3 v3', category: 'Pattern' },
-    'pattern-4x4': { id: 'pattern-4x4', name: 'Pattern 4×4', category: 'Pattern' },
-    'pattern-5x2': { id: 'pattern-5x2', name: 'Pattern 5×2', category: 'Pattern' },
+    // Pattern (binary output only - uses first/last palette colors)
+    'pattern-2x2': { id: 'pattern-2x2', name: 'Pattern 2×2', category: 'Pattern', warning: '2-color output only' },
+    'pattern-3x3-v1': { id: 'pattern-3x3-v1', name: 'Pattern 3×3 v1', category: 'Pattern', warning: '2-color output only' },
+    'pattern-3x3-v2': { id: 'pattern-3x3-v2', name: 'Pattern 3×3 v2', category: 'Pattern', warning: '2-color output only' },
+    'pattern-3x3-v3': { id: 'pattern-3x3-v3', name: 'Pattern 3×3 v3', category: 'Pattern', warning: '2-color output only' },
+    'pattern-4x4': { id: 'pattern-4x4', name: 'Pattern 4×4', category: 'Pattern', warning: '2-color output only' },
+    'pattern-5x2': { id: 'pattern-5x2', name: 'Pattern 5×2', category: 'Pattern', warning: '2-color output only' },
 
-    // Dot Diffusion
-    'dot-diffusion-knuth': { id: 'dot-diffusion-knuth', name: 'Knuth', category: 'Dot Diffusion' },
-    'dot-diffusion-mini-knuth': { id: 'dot-diffusion-mini-knuth', name: 'Mini-Knuth', category: 'Dot Diffusion' },
-    'dot-diffusion-optimized-knuth': { id: 'dot-diffusion-optimized-knuth', name: 'Optimized Knuth', category: 'Dot Diffusion' },
-    'dot-diffusion-mese-8x8': { id: 'dot-diffusion-mese-8x8', name: 'Mese 8×8', category: 'Dot Diffusion' },
-    'dot-diffusion-mese-16x16': { id: 'dot-diffusion-mese-16x16', name: 'Mese 16×16', category: 'Dot Diffusion' },
-    'dot-diffusion-guo-liu-8x8': { id: 'dot-diffusion-guo-liu-8x8', name: 'Guo-Liu 8×8', category: 'Dot Diffusion' },
-    'dot-diffusion-guo-liu-16x16': { id: 'dot-diffusion-guo-liu-16x16', name: 'Guo-Liu 16×16', category: 'Dot Diffusion' },
-    'dot-diffusion-spiral': { id: 'dot-diffusion-spiral', name: 'Spiral', category: 'Dot Diffusion' },
-    'dot-diffusion-inverted-spiral': { id: 'dot-diffusion-inverted-spiral', name: 'Inverted Spiral', category: 'Dot Diffusion' },
+    // Dot Diffusion (binary output only - uses first/last palette colors)
+    'dot-diffusion-knuth': { id: 'dot-diffusion-knuth', name: 'Knuth', category: 'Dot Diffusion', warning: '2-color output only' },
+    'dot-diffusion-mini-knuth': { id: 'dot-diffusion-mini-knuth', name: 'Mini-Knuth', category: 'Dot Diffusion', warning: '2-color output only' },
+    'dot-diffusion-optimized-knuth': { id: 'dot-diffusion-optimized-knuth', name: 'Optimized Knuth', category: 'Dot Diffusion', warning: '2-color output only' },
+    'dot-diffusion-mese-8x8': { id: 'dot-diffusion-mese-8x8', name: 'Mese 8×8', category: 'Dot Diffusion', warning: '2-color output only' },
+    'dot-diffusion-mese-16x16': { id: 'dot-diffusion-mese-16x16', name: 'Mese 16×16', category: 'Dot Diffusion', warning: '2-color output only' },
+    'dot-diffusion-guo-liu-8x8': { id: 'dot-diffusion-guo-liu-8x8', name: 'Guo-Liu 8×8', category: 'Dot Diffusion', warning: '2-color output only' },
+    'dot-diffusion-guo-liu-16x16': { id: 'dot-diffusion-guo-liu-16x16', name: 'Guo-Liu 16×16', category: 'Dot Diffusion', warning: '2-color output only' },
+    'dot-diffusion-spiral': { id: 'dot-diffusion-spiral', name: 'Spiral', category: 'Dot Diffusion', warning: '2-color output only' },
+    'dot-diffusion-inverted-spiral': { id: 'dot-diffusion-inverted-spiral', name: 'Inverted Spiral', category: 'Dot Diffusion', warning: '2-color output only' },
 
-    // Dot Lippens
-    'dot-lippens-li1': { id: 'dot-lippens-li1', name: 'Lippens Li1', category: 'Dot Lippens' },
-    'dot-lippens-li2': { id: 'dot-lippens-li2', name: 'Lippens Li2', category: 'Dot Lippens' },
-    'dot-lippens-li3': { id: 'dot-lippens-li3', name: 'Lippens Li3', category: 'Dot Lippens' },
-    'dot-lippens-guo': { id: 'dot-lippens-guo', name: 'Lippens Guo', category: 'Dot Lippens' },
-    'dot-lippens-mese': { id: 'dot-lippens-mese', name: 'Lippens Mese', category: 'Dot Lippens' },
-    'dot-lippens-knuth': { id: 'dot-lippens-knuth', name: 'Lippens Knuth', category: 'Dot Lippens' },
+    // Dot Lippens (binary output only - uses first/last palette colors)
+    'dot-lippens-li1': { id: 'dot-lippens-li1', name: 'Lippens Li1', category: 'Dot Lippens', warning: '2-color output only' },
+    'dot-lippens-li2': { id: 'dot-lippens-li2', name: 'Lippens Li2', category: 'Dot Lippens', warning: '2-color output only' },
+    'dot-lippens-li3': { id: 'dot-lippens-li3', name: 'Lippens Li3', category: 'Dot Lippens', warning: '2-color output only' },
+    'dot-lippens-guo': { id: 'dot-lippens-guo', name: 'Lippens Guo', category: 'Dot Lippens', warning: '2-color output only' },
+    'dot-lippens-mese': { id: 'dot-lippens-mese', name: 'Lippens Mese', category: 'Dot Lippens', warning: '2-color output only' },
+    'dot-lippens-knuth': { id: 'dot-lippens-knuth', name: 'Lippens Knuth', category: 'Dot Lippens', warning: '2-color output only' },
 
-    // Variable Error Diffusion
-    'variable-ostromoukhov': { id: 'variable-ostromoukhov', name: 'Ostromoukhov', category: 'Variable Error Diffusion' },
-    'variable-zhou-fang': { id: 'variable-zhou-fang', name: 'Zhou-Fang', category: 'Variable Error Diffusion' },
+    // Variable Error Diffusion (binary output only - uses first/last palette colors)
+    'variable-ostromoukhov': { id: 'variable-ostromoukhov', name: 'Ostromoukhov', category: 'Variable Error Diffusion', warning: '2-color output only' },
+    'variable-zhou-fang': { id: 'variable-zhou-fang', name: 'Zhou-Fang', category: 'Variable Error Diffusion', warning: '2-color output only' },
 
     // Other
     'threshold': { id: 'threshold', name: 'Threshold', category: 'Other' },
-    'dbs': { id: 'dbs', name: 'Direct Binary Search', category: 'Other', description: 'Very slow but high quality' },
-    'grid': { id: 'grid', name: 'Grid', category: 'Other' },
-    'kacker-allebach': { id: 'kacker-allebach', name: 'Kacker-Allebach', category: 'Other' },
+    'dbs': { id: 'dbs', name: 'Direct Binary Search', category: 'Other', warning: 'Very slow, 2-color only' },
+    'grid': { id: 'grid', name: 'Grid', category: 'Other', warning: '2-color output only' },
+    'kacker-allebach': { id: 'kacker-allebach', name: 'Kacker-Allebach', category: 'Other', warning: '2-color output only' },
 
     // Color variants
     'floyd-steinberg-color': { id: 'floyd-steinberg-color', name: 'Floyd-Steinberg', category: 'Error Diffusion', isColor: true },
@@ -145,8 +145,6 @@ export const ALGORITHMS: Record<Algorithm, AlgorithmInfo> = {
     'sierra-lite-color': { id: 'sierra-lite-color', name: 'Sierra Lite', category: 'Error Diffusion', isColor: true },
     'atkinson-color': { id: 'atkinson-color', name: 'Atkinson', category: 'Error Diffusion', isColor: true },
     'ordered-bayer8-color': { id: 'ordered-bayer8-color', name: 'Bayer 8×8', category: 'Ordered', isColor: true },
-    'ordered-blue-noise-color': { id: 'ordered-blue-noise-color', name: 'Blue Noise', category: 'Ordered', isColor: true },
-    'riemersma-hilbert-color': { id: 'riemersma-hilbert-color', name: 'Hilbert Curve', category: 'Riemersma', isColor: true },
     'threshold-color': { id: 'threshold-color', name: 'Threshold', category: 'Other', isColor: true }
 };
 

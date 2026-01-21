@@ -125,8 +125,6 @@ export type ColorAlgorithm =
     | 'sierra-lite-color'
     | 'atkinson-color'
     | 'ordered-bayer8-color'
-    | 'ordered-blue-noise-color'
-    | 'riemersma-hilbert-color'
     | 'threshold-color';
 
 /**
@@ -155,5 +153,6 @@ export interface AlgorithmInfo {
     name: string;
     category: AlgorithmCategory;
     description?: string;
+    warning?: string;  // Shows info icon with tooltip for algorithm-specific concerns
     isColor?: boolean;
 }

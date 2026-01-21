@@ -246,6 +246,7 @@ function imageDataToDitherImage(wasm: LibDitherModule, imageData: ImageData): nu
 
 /**
  * Convert mono output buffer to ImageData with palette colors
+ * Maps grayscale output values to the nearest palette color by luminance
  */
 function monoOutputToImageData(
     wasm: LibDitherModule,
@@ -257,27 +258,227 @@ function monoOutputToImageData(
     const output = new ImageData(width, height);
     const pixelCount = width * height;
 
-    // Get foreground (white/light) and background (black/dark) colors from palette
-    const bgColor = palette.colors[0];
-    const fgColor = palette.colors[palette.colors.length - 1];
+    // Pre-compute luminance for all palette colors and sort by luminance
+    const paletteWithLum = palette.colors.map(color => ({
+        color,
+        luminance: 0.299 * color.r + 0.587 * color.g + 0.114 * color.b
+    })).sort((a, b) => a.luminance - b.luminance);
 
+    // Build a lookup table (256 entries) mapping grayscale value to palette color
+    // This is much faster than computing nearest color per pixel
+    const lut = new Array<{ r: number; g: number; b: number }>(256);
+
+    for (let i = 0; i < 256; i++) {
+        // Find nearest palette color by luminance
+        let nearestIdx = 0;
+        let minDist = Math.abs(i - paletteWithLum[0].luminance);
+
+        for (let j = 1; j < paletteWithLum.length; j++) {
+            const dist = Math.abs(i - paletteWithLum[j].luminance);
+            if (dist < minDist) {
+                minDist = dist;
+                nearestIdx = j;
+            }
+        }
+
+        lut[i] = paletteWithLum[nearestIdx].color;
+    }
+
+    // Map output values to palette colors using LUT
     for (let i = 0; i < pixelCount; i++) {
         const value = wasm.HEAPU8[outPtr + i];
         const outIdx = i * 4;
+        const color = lut[value];
 
-        if (value > 127) {
-            output.data[outIdx] = fgColor.r;
-            output.data[outIdx + 1] = fgColor.g;
-            output.data[outIdx + 2] = fgColor.b;
-        } else {
-            output.data[outIdx] = bgColor.r;
-            output.data[outIdx + 1] = bgColor.g;
-            output.data[outIdx + 2] = bgColor.b;
-        }
+        output.data[outIdx] = color.r;
+        output.data[outIdx + 1] = color.g;
+        output.data[outIdx + 2] = color.b;
         output.data[outIdx + 3] = 255;
     }
 
     return output;
+}
+
+/**
+ * Convert ImageData to ColorImage pointer (for color dithering)
+ */
+function imageDataToColorImage(wasm: LibDitherModule, imageData: ImageData): number {
+    const { width, height, data } = imageData;
+    const imgPtr = wasm._ColorImage_new(width, height);
+
+    if (imgPtr === 0) {
+        console.error('[WASM] Failed to create ColorImage');
+        return 0;
+    }
+
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+            const i = (y * width + x) * 4;
+            const addr = y * width + x;
+            wasm._ColorImage_set_rgb(imgPtr, addr, data[i], data[i + 1], data[i + 2], data[i + 3]);
+        }
+    }
+
+    return imgPtr;
+}
+
+/**
+ * Create a CachedPalette from a Palette (for color dithering)
+ * Returns { cachedPalette, bytePalette } pointers that need to be freed
+ */
+function createCachedPalette(wasm: LibDitherModule, palette: Palette): { cachedPalette: number; bytePalette: number } {
+    const bytePalette = wasm._BytePalette_new(palette.colors.length);
+
+    // Create a temporary buffer for ByteColor struct (4 bytes: r, g, b, a)
+    const colorPtr = wasm._malloc(4);
+
+    for (let i = 0; i < palette.colors.length; i++) {
+        const color = palette.colors[i];
+        wasm.HEAPU8[colorPtr] = color.r;
+        wasm.HEAPU8[colorPtr + 1] = color.g;
+        wasm.HEAPU8[colorPtr + 2] = color.b;
+        wasm.HEAPU8[colorPtr + 3] = 255; // Alpha
+        wasm._BytePalette_set(bytePalette, i, colorPtr);
+    }
+
+    wasm._free(colorPtr);
+
+    const cachedPalette = wasm._CachedPalette_new();
+    wasm._CachedPalette_from_BytePalette(cachedPalette, bytePalette);
+    // Mode 0 = sRGB, null illuminant
+    wasm._CachedPalette_update_cache(cachedPalette, 0, 0);
+
+    return { cachedPalette, bytePalette };
+}
+
+/**
+ * Convert palette index output to ImageData
+ */
+function indexOutputToImageData(
+    wasm: LibDitherModule,
+    outPtr: number,
+    width: number,
+    height: number,
+    palette: Palette
+): ImageData {
+    const output = new ImageData(width, height);
+    const pixelCount = width * height;
+
+    for (let i = 0; i < pixelCount; i++) {
+        // Output is int32 array (4 bytes per index)
+        const index = wasm.HEAP32[(outPtr >> 2) + i];
+        const outIdx = i * 4;
+
+        if (index >= 0 && index < palette.colors.length) {
+            const color = palette.colors[index];
+            output.data[outIdx] = color.r;
+            output.data[outIdx + 1] = color.g;
+            output.data[outIdx + 2] = color.b;
+            output.data[outIdx + 3] = 255;
+        } else {
+            // Transparent or invalid index
+            output.data[outIdx] = 0;
+            output.data[outIdx + 1] = 0;
+            output.data[outIdx + 2] = 0;
+            output.data[outIdx + 3] = 0;
+        }
+    }
+
+    return output;
+}
+
+/**
+ * Check if algorithm supports color dithering in WASM
+ */
+function supportsWasmColorDither(algorithm: string): boolean {
+    // Error diffusion algorithms that have color support
+    const errorDiffusionAlgos = [
+        'floyd-steinberg', 'jarvis-judice-ninke', 'stucki', 'burkes',
+        'sierra3', 'sierra2', 'sierra-lite', 'atkinson', 'stevenson-arce',
+        'fake-floyd-steinberg', 'shiau-fan1', 'shiau-fan2', 'shiau-fan3',
+        'xot', 'diagonal', 'diffusion-1d', 'diffusion-2d',
+        'steve-pigeon', 'robert-kist'
+    ];
+
+    // Ordered dithering algorithms that have color support
+    const orderedAlgos = [
+        'ordered-bayer2', 'ordered-bayer3', 'ordered-bayer4',
+        'ordered-bayer8', 'ordered-bayer16', 'ordered-bayer32',
+        'ordered-blue-noise',
+        'ordered-clustered-v1', 'ordered-clustered-v2', 'ordered-clustered-v3',
+        'ordered-clustered-v4', 'ordered-clustered-v5', 'ordered-clustered-v6',
+        'ordered-clustered-v7', 'ordered-clustered-v8', 'ordered-clustered-v9',
+        'ordered-clustered-v10', 'ordered-clustered-v11',
+        'ordered-dispersed-v1', 'ordered-dispersed-v2', 'ordered-ulichney-void',
+        'ordered-nonrect-v1', 'ordered-nonrect-v2', 'ordered-nonrect-v3', 'ordered-nonrect-v4',
+        'ordered-ulichney-bayer5', 'ordered-ulichney-standard', 'ordered-ulichney-clustered',
+        'ordered-diagonal',
+        'ordered-im-circle5', 'ordered-im-circle6', 'ordered-im-circle7',
+        'ordered-im-45deg4', 'ordered-im-45deg6', 'ordered-im-45deg8',
+        'ordered-variable2', 'ordered-variable4', 'ordered-interleaved-gradient'
+    ];
+
+    return errorDiffusionAlgos.includes(algorithm) || orderedAlgos.includes(algorithm);
+}
+
+/**
+ * WASM color dithering for multi-color palettes
+ */
+async function wasmDitherColor(
+    imageData: ImageData,
+    algorithm: Algorithm,
+    palette: Palette,
+    options: AlgorithmOptions = {}
+): Promise<ImageData> {
+    const wasm = await initWasm();
+    const { width, height } = imageData;
+    const pixelCount = width * height;
+
+    // Allocate output buffer (int32 for palette indices)
+    const outPtr = wasm._malloc(pixelCount * 4);
+    if (outPtr === 0) {
+        throw new Error('[WASM] Failed to allocate output buffer');
+    }
+
+    // Initialize output to -1 (transparent)
+    for (let i = 0; i < pixelCount; i++) {
+        wasm.HEAP32[(outPtr >> 2) + i] = -1;
+    }
+
+    // Create ColorImage from input
+    const imgPtr = imageDataToColorImage(wasm, imageData);
+    if (imgPtr === 0) {
+        wasm._free(outPtr);
+        throw new Error('[WASM] Failed to create ColorImage');
+    }
+
+    // Create palette
+    const { cachedPalette, bytePalette } = createCachedPalette(wasm, palette);
+
+    try {
+        const serpentine = (options as { serpentine?: boolean }).serpentine ? 1 : 0;
+
+        // Check if it's an error diffusion or ordered algorithm
+        const isErrorDiffusion = !algorithm.startsWith('ordered-');
+
+        if (isErrorDiffusion) {
+            const matrixPtr = getErrorDiffusionMatrix(wasm, algorithm);
+            wasm._error_diffusion_dither_color(imgPtr, matrixPtr, cachedPalette, serpentine, outPtr);
+            wasm._ErrorDiffusionMatrix_free(matrixPtr);
+        } else {
+            const { ptr: matrixPtr, needsFree } = getOrderedMatrix(wasm, algorithm, options);
+            wasm._ordered_dither_color(imgPtr, cachedPalette, matrixPtr, outPtr);
+            if (needsFree) wasm._OrderedDitherMatrix_free(matrixPtr);
+        }
+
+        return indexOutputToImageData(wasm, outPtr, width, height, palette);
+
+    } finally {
+        wasm._ColorImage_free(imgPtr);
+        wasm._CachedPalette_free(cachedPalette);
+        wasm._BytePalette_free(bytePalette);
+        wasm._free(outPtr);
+    }
 }
 
 /**
@@ -474,6 +675,7 @@ function getDotLippensCoefficients(wasm: LibDitherModule, algorithm: string): nu
 
 /**
  * Main WASM dithering function for mono algorithms
+ * Uses color dithering path when palette has >2 colors and algorithm supports it
  */
 export async function wasmDitherMono(
     imageData: ImageData,
@@ -481,6 +683,12 @@ export async function wasmDitherMono(
     palette: Palette,
     options: AlgorithmOptions = {}
 ): Promise<ImageData> {
+    // Use color dithering for multi-color palettes when algorithm supports it
+    // This gives proper multi-level dithering instead of binary output
+    if (palette.colors.length > 2 && supportsWasmColorDither(algorithm)) {
+        return wasmDitherColor(imageData, algorithm, palette, options);
+    }
+
     const wasm = await initWasm();
     const { width, height } = imageData;
     const pixelCount = width * height;
@@ -507,7 +715,7 @@ export async function wasmDitherMono(
         const serpentine = (options as { serpentine?: boolean }).serpentine ? 1 : 0;
         const jitter = (options as { jitter?: number }).jitter ?? 0;
 
-        // Route to appropriate algorithm
+        // Route to appropriate algorithm (mono binary dithering)
         if (algorithm === 'threshold') {
             const threshold = (options as { threshold?: number }).threshold ?? 0.5;
             const noise = (options as { noise?: number }).noise ?? 0;

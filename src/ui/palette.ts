@@ -1,6 +1,6 @@
 import { app } from '../app.ts';
 import type { Palette, Color, BuiltInPalette, ColorMatchMethod } from '../types/index.ts';
-import { BUILTIN_PALETTES, getPalette } from '../data/palettes/presets.ts';
+import { getPalette } from '../data/palettes/presets.ts';
 import { paletteStorage } from '../utils/palette-storage.ts';
 import { showSavePaletteDialog } from './save-palette-dialog.ts';
 import { showExportPaletteDialog } from './export-palette-dialog.ts';
@@ -28,7 +28,7 @@ export function initPalette(container: HTMLElement): void {
     const exportPaletteBtn = container.querySelector<HTMLButtonElement>('#export-palette-btn');
     const deleteSavedPaletteBtn = container.querySelector<HTMLButtonElement>('#delete-saved-palette-btn');
 
-    let currentSource = 'builtin';
+    let _currentSource = 'builtin';
 
     /**
      * Render color swatches
@@ -64,7 +64,7 @@ export function initPalette(container: HTMLElement): void {
      * Show/hide UI elements based on palette source
      */
     function updateSourceUI(source: string): void {
-        currentSource = source;
+        _currentSource = source;
 
         if (builtinPaletteGroup) {
             builtinPaletteGroup.style.display = source === 'builtin' ? '' : 'none';
@@ -590,8 +590,7 @@ function loadPaletteFromFile(): void {
 /**
  * Parse palette file contents
  */
-function parsePaletteFile(content: string, filename: string): Color[] {
-    const ext = filename.split('.').pop()?.toLowerCase();
+function parsePaletteFile(content: string, _filename: string): Color[] {
     const lines = content.split(/\r?\n/).filter(line => line.trim());
 
     const colors: Color[] = [];

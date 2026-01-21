@@ -3,7 +3,7 @@
  * Platform abstraction layer for browser and Electron environments
  */
 
-import type { FileResult, OpenFileOptions, SaveFileOptions } from '../types/electron';
+import type { FileResult } from '../types/electron';
 
 /**
  * Check if running in Electron

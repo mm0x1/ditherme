@@ -1,5 +1,5 @@
 import { app } from '../app.ts';
-import { isSupportedVideoType, SUPPORTED_VIDEO_TYPES, MAX_VIDEO_DURATION } from '../types/video.ts';
+import { isSupportedVideoType, MAX_VIDEO_DURATION } from '../types/video.ts';
 import { getVideoManager } from './video/video-manager.ts';
 import { getTimeline } from '../ui/video/timeline.ts';
 
@@ -12,14 +12,6 @@ const SUPPORTED_IMAGE_TYPES = [
     'image/gif',
     'image/bmp',
     'image/webp'
-];
-
-/**
- * All supported file types (images + videos)
- */
-const SUPPORTED_TYPES = [
-    ...SUPPORTED_IMAGE_TYPES,
-    ...SUPPORTED_VIDEO_TYPES
 ];
 
 /**

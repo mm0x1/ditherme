@@ -3,7 +3,7 @@
  * Provides high-performance dithering using libdither compiled to WebAssembly
  */
 
-import type { Algorithm, Palette, AlgorithmOptions, ColorMatchMethod } from '../types/index.ts';
+import type { Algorithm, Palette, AlgorithmOptions } from '../types/index.ts';
 
 // WASM module interface
 interface LibDitherModule {

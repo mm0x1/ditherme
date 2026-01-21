@@ -4,7 +4,6 @@
  */
 
 import { settings } from '../utils/settings.ts';
-import { isElectron } from '../utils/electron-bridge.ts';
 
 /**
  * Show the API documentation dialog

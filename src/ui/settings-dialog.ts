@@ -3,7 +3,6 @@
  */
 
 import { settings } from '../utils/settings.ts';
-import type { UserSettings } from '../types/settings.ts';
 import { generateToken } from '../api/middleware/auth.ts';
 import { isElectron } from '../utils/electron-bridge.ts';
 

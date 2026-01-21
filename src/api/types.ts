@@ -3,8 +3,7 @@
  * Request/response types for the scripting API
  */
 
-import type { Algorithm, AlgorithmInfo, AlgorithmOptions, Palette, ColorMatchMethod, Color } from '../types/index.ts';
-import type { ExportPreset } from '../types/settings.ts';
+import type { Algorithm, AlgorithmOptions, Palette, ColorMatchMethod, Color } from '../types/index.ts';
 
 /**
  * HTTP method types

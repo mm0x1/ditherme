@@ -131,7 +131,7 @@ export function errorDiffusionMono(
     palette: Palette,
     kernelName: string,
     options: BaseOptions = {},
-    colorMatchMethod: ColorMatchMethod = 'luminance'
+    _colorMatchMethod: ColorMatchMethod = 'luminance'
 ): ImageData {
     const kernel = ERROR_KERNELS[kernelName];
     if (!kernel) {

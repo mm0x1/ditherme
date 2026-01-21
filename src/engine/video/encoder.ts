@@ -3,7 +3,7 @@
  */
 
 import type { VideoMetadata, VideoExportOptions, VideoEncoderInterface } from '../../types/video.ts';
-import { getVideoCapability, shouldUseWebCodecs } from './capability.ts';
+import { shouldUseWebCodecs } from './capability.ts';
 
 // Lazy load FFmpeg
 let ffmpegInstance: FFmpegInstance | null = null;
@@ -73,16 +73,16 @@ export interface VideoEncoderWrapper extends VideoEncoderInterface {
  */
 export class WebCodecsEncoderWrapper implements VideoEncoderWrapper {
     private encoder: VideoEncoder | null = null;
-    private muxer: MP4Muxer | null = null;
+    private _muxer: MP4Muxer | null = null;
     private options: VideoExportOptions | null = null;
-    private metadata: VideoMetadata | null = null;
+    private _metadata: VideoMetadata | null = null;
     private chunks: EncodedVideoChunk[] = [];
     private frameIndex = 0;
     private aborted = false;
 
     async configure(options: VideoExportOptions, metadata: VideoMetadata): Promise<void> {
         this.options = options;
-        this.metadata = metadata;
+        this._metadata = metadata;
         this.chunks = [];
         this.frameIndex = 0;
         this.aborted = false;
@@ -93,7 +93,7 @@ export class WebCodecsEncoderWrapper implements VideoEncoderWrapper {
         const height = options.height ?? metadata.height;
 
         this.encoder = new VideoEncoder({
-            output: (chunk: EncodedVideoChunk, meta?: EncodedVideoChunkMetadata) => {
+            output: (chunk: EncodedVideoChunk, _meta?: EncodedVideoChunkMetadata) => {
                 this.chunks.push(chunk);
             },
             error: (e: Error) => {
@@ -119,7 +119,7 @@ export class WebCodecsEncoderWrapper implements VideoEncoderWrapper {
 
         // Initialize mp4box muxer
         const MP4Box = await import('mp4box');
-        this.muxer = MP4Box.createFile();
+        this._muxer = MP4Box.createFile();
     }
 
     private calculateBitrate(width: number, height: number, quality: number): number {

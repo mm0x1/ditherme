@@ -28,7 +28,6 @@ async function getFFmpeg(): Promise<FFmpegInstance> {
 
     // Dynamic import to avoid loading FFmpeg until needed
     const { FFmpeg } = await import('@ffmpeg/ffmpeg');
-    const { fetchFile } = await import('@ffmpeg/util');
 
     const ffmpeg = new FFmpeg();
 
@@ -68,7 +67,7 @@ async function getFFmpeg(): Promise<FFmpegInstance> {
  * WebCodecs-based frame extractor using mp4box.js for demuxing
  */
 export class WebCodecsExtractor implements FrameExtractor {
-    private file: File | null = null;
+    private _file: File | null = null;
     private metadata: VideoMetadata | null = null;
     private decoder: VideoDecoder | null = null;
     private mp4boxFile: MP4BoxFile | null = null;
@@ -79,7 +78,7 @@ export class WebCodecsExtractor implements FrameExtractor {
     private currentSampleIndex = 0;
 
     async open(file: File): Promise<VideoMetadata> {
-        this.file = file;
+        this._file = file;
         this.samples = [];
         this.decodedFrames.clear();
 
@@ -246,7 +245,7 @@ export class WebCodecsExtractor implements FrameExtractor {
         }
     }
 
-    async seekToFrame(index: number): Promise<void> {
+    async seekToFrame(_index: number): Promise<void> {
         // For WebCodecs, we decode sequentially so this is a no-op
         // The frame will be available when getFrame is called
     }
@@ -261,7 +260,7 @@ export class WebCodecsExtractor implements FrameExtractor {
         this.samples = [];
         this.decodedFrames.clear();
         this.pendingFrames.clear();
-        this.file = null;
+        this._file = null;
         this.metadata = null;
     }
 }
@@ -411,8 +410,6 @@ export async function createExtractor(): Promise<FrameExtractor> {
 type MP4BoxFile = any;
 type MP4Info = any;
 type MP4VideoTrack = any;
-type MP4Track = any;
-type MP4DataStream = any;
 type MP4Sample = any;
 type MP4BoxModule = any;
 

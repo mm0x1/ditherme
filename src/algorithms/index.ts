@@ -7,8 +7,8 @@ import type {
     ColorMatchMethod
 } from '../types/index.ts';
 import { threshold, thresholdColor } from './threshold.ts';
-import { errorDiffusionMono, errorDiffusionColor, ERROR_KERNELS } from './error-diffusion.ts';
-import { orderedDitherMono, orderedDitherColor, BAYER_MATRICES } from './ordered.ts';
+import { errorDiffusionMono, errorDiffusionColor } from './error-diffusion.ts';
+import { orderedDitherMono, orderedDitherColor } from './ordered.ts';
 import { wasmDitherMono, shouldUseWasm, initWasm, isWasmLoaded } from '../engine/wasm-dither.ts';
 
 /**

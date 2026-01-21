@@ -8,8 +8,8 @@ import { settings } from './settings.ts';
 import { isElectron } from './electron-bridge.ts';
 import { handleRequest, createAPIRequest } from '../api/router.ts';
 import { createBatchQueue } from '../api/batch-queue.ts';
-import type { APIContext, APIRequest, APIResponse, AppStateSnapshot, ImageSource, BatchQueue, BatchJobSettings } from '../api/types.ts';
-import { ALGORITHMS, ditherAsync } from '../algorithms/index.ts';
+import type { APIContext, AppStateSnapshot, ImageSource, BatchQueue, BatchJobSettings } from '../api/types.ts';
+import { ditherAsync } from '../algorithms/index.ts';
 import { BUILTIN_PALETTES } from '../data/palettes/presets.ts';
 import type { Algorithm, Palette } from '../types/index.ts';
 

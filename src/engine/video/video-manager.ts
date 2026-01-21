@@ -8,7 +8,7 @@ import { createExtractor } from './extractor.ts';
 import { FrameCache, createFrameCache, computeSettingsHash } from './frame-cache.ts';
 import { createVideoWorkerPool, type WorkerPool } from '../../workers/worker-pool.ts';
 import type { VideoProcessorAPI, FrameDitherSettings } from '../../workers/video-processor.worker.ts';
-import { createEncoder, type VideoEncoderWrapper } from './encoder.ts';
+import { createEncoder } from './encoder.ts';
 
 /**
  * Source frame buffer for efficient extraction
@@ -73,7 +73,7 @@ export class VideoManager {
     private frameCache: FrameCache;
     private workerPool: WorkerPool<VideoProcessorAPI> | null = null;
     private metadata: VideoMetadata | null = null;
-    private file: File | null = null;
+    private _file: File | null = null;
     private currentSettingsHash: string = '';
     private abortController: AbortController | null = null;
 
@@ -92,7 +92,7 @@ export class VideoManager {
         // Close previous video if any
         this.closeVideo();
 
-        this.file = file;
+        this._file = file;
         this.extractor = await createExtractor();
         this.metadata = await this.extractor.open(file);
         this.sourceBuffer.setExtractor(this.extractor);
@@ -216,15 +216,6 @@ export class VideoManager {
         await encoder.configure(options, this.metadata);
 
         const frameCount = this.metadata.frameCount;
-        const settings: FrameDitherSettings = {
-            algorithm: state.algorithm,
-            palette: state.customPalette ?? state.palette,
-            adjustments: state.adjustments,
-            options: state.options,
-            colorMatchMethod: state.colorMatch,
-            pixelScale: state.pixelScale,
-            levels: state.levels,
-        };
 
         try {
             // Process and encode frames
@@ -313,7 +304,7 @@ export class VideoManager {
         this.sourceBuffer.clear();
         this.frameCache.invalidateAll();
         this.metadata = null;
-        this.file = null;
+        this._file = null;
         this.currentSettingsHash = '';
     }
 

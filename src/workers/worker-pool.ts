@@ -56,13 +56,6 @@ export function createWorkerPool<T>(
         workers.push({ worker, proxy, busy: false });
     }
 
-    function removeWorker(): void {
-        const pooledWorker = workers.pop();
-        if (pooledWorker) {
-            pooledWorker.worker.terminate();
-        }
-    }
-
     function getAvailableWorker(): PooledWorker<T> | null {
         return workers.find(w => !w.busy) ?? null;
     }

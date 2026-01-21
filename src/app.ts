@@ -4,9 +4,7 @@ import type {
     StateChangeDetail,
     Algorithm,
     AlgorithmOptions,
-    DitherMode,
-    DEFAULT_ADJUSTMENTS,
-    DEFAULT_MONO_PALETTE
+    DitherMode
 } from './types/index.ts';
 import type { AppEventMap, AppEventListener } from './types/events.ts';
 import { createAppEvent } from './types/events.ts';

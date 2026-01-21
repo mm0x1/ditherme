@@ -1,7 +1,7 @@
 import { app, shouldRedither } from '../app.ts';
 import type { Algorithm, Palette, AlgorithmOptions, ImageAdjustments, ColorMatchMethod, Color } from '../types/index.ts';
 import { applyAdjustments, hasAdjustments } from './adjustments.ts';
-import { dither as ditherAlgorithm, ditherAsync, initDitherWasm } from '../algorithms/index.ts';
+import { ditherAsync, initDitherWasm } from '../algorithms/index.ts';
 import { getColorDistanceFunction } from './color.ts';
 import { imageCache } from './image-cache.ts';
 

@@ -5,8 +5,8 @@
 
 import type { APIRequest, APIResponse, APIContext, AlgorithmsResponse, AlgorithmCategoryGroup, AlgorithmDetail, AlgorithmOptionDefinition } from '../types.ts';
 import { createResponse } from '../types.ts';
-import { ALGORITHMS, getAlgorithmsByCategory, shouldUseWasm } from '../../algorithms/index.ts';
-import type { AlgorithmInfo, AlgorithmCategory } from '../../types/index.ts';
+import { getAlgorithmsByCategory, shouldUseWasm } from '../../algorithms/index.ts';
+import type { AlgorithmInfo } from '../../types/index.ts';
 
 /**
  * Get option definitions for an algorithm

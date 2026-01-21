@@ -8,7 +8,7 @@ import { initViewport, initViewControls } from './ui/viewport.ts';
 import { initSidebar } from './ui/sidebar.ts';
 import { initAdjustments, initDitherSettings } from './ui/adjustments.ts';
 import { initPalette } from './ui/palette.ts';
-import { initDragAndDrop, initFileInput, initClipboard, initSaveHandlers, downloadImage, downloadImageWithPreset } from './engine/image.ts';
+import { initDragAndDrop, initFileInput, initClipboard, initSaveHandlers, downloadImageWithPreset } from './engine/image.ts';
 import { settings } from './utils/settings.ts';
 import { DEFAULT_EXPORT_PRESETS } from './types/settings.ts';
 import { showHelpDialog, showAboutDialog } from './ui/help-dialog.ts';

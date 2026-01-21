@@ -75,7 +75,7 @@ export function threshold(
 export function thresholdColor(
     input: ImageData,
     palette: Palette,
-    options: ThresholdOptions = {},
+    _options: ThresholdOptions = {},
     colorMatchMethod: ColorMatchMethod = 'euclidean'
 ): ImageData {
     const { width, height, data } = input;
@@ -104,50 +104,3 @@ export function thresholdColor(
     return output;
 }
 
-/**
- * Calculate optimal threshold using Otsu's method
- */
-function calculateOtsuThreshold(data: Uint8ClampedArray, width: number, height: number): number {
-    const histogram = new Array(256).fill(0);
-    const totalPixels = width * height;
-
-    // Build histogram
-    for (let i = 0; i < data.length; i += 4) {
-        const luminance = Math.round(rgbToLuminance(data[i], data[i + 1], data[i + 2]));
-        histogram[luminance]++;
-    }
-
-    // Calculate total mean
-    let sum = 0;
-    for (let i = 0; i < 256; i++) {
-        sum += i * histogram[i];
-    }
-
-    let sumB = 0;
-    let wB = 0;
-    let maxVariance = 0;
-    let threshold = 0;
-
-    // Find threshold that maximizes between-class variance
-    for (let t = 0; t < 256; t++) {
-        wB += histogram[t];
-        if (wB === 0) continue;
-
-        const wF = totalPixels - wB;
-        if (wF === 0) break;
-
-        sumB += t * histogram[t];
-
-        const mB = sumB / wB;
-        const mF = (sum - sumB) / wF;
-
-        const variance = wB * wF * (mB - mF) * (mB - mF);
-
-        if (variance > maxVariance) {
-            maxVariance = variance;
-            threshold = t;
-        }
-    }
-
-    return threshold;
-}

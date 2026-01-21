@@ -4,8 +4,8 @@
 
 import { app } from '../app.ts';
 import { settings } from '../utils/settings.ts';
-import { DEFAULT_EXPORT_PRESETS, type ExportPreset } from '../types/settings.ts';
-import { processBatch, downloadBatchResults, type BatchJob } from '../engine/batch-processor.ts';
+import { DEFAULT_EXPORT_PRESETS } from '../types/settings.ts';
+import { processBatch, downloadBatchResults } from '../engine/batch-processor.ts';
 import { ALGORITHMS } from '../algorithms/index.ts';
 import type { Algorithm, ImageAdjustments } from '../types/index.ts';
 
@@ -131,7 +131,7 @@ export function showBatchDialog(): void {
 
         // Attach remove handlers
         fileList.querySelectorAll('.remove-file').forEach(btn => {
-            btn.addEventListener('click', (e) => {
+            btn.addEventListener('click', () => {
                 const index = parseInt((btn as HTMLElement).dataset.index || '0');
                 selectedFiles.splice(index, 1);
                 updateFileList();

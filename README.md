@@ -26,6 +26,7 @@ This is a hobby project and not meant for professional use.
 - **WASM Acceleration** - Faster processing for supported algorithms
 - **Cross-Platform** - Runs on macOS, Linux, and Windows (Electron app)
 - **Web Version** - Also available as a browser-based application
+- **Scripting API** (Experimental) - HTTP REST API for automation and scripting
 
 ## Installation
 

@@ -1484,6 +1484,16 @@ progress::-webkit-progress-value {
     overflow-y: auto;
 }
 
+.api-experimental-notice {
+    background: rgba(255, 193, 7, 0.15);
+    border: 1px solid rgba(255, 193, 7, 0.4);
+    color: #ffc107;
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: 4px;
+    margin-bottom: var(--spacing-md);
+    font-size: var(--font-size-sm);
+}
+
 .api-status {
     display: flex;
     align-items: center;

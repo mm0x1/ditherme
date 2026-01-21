@@ -31,6 +31,10 @@ export function showAPIDocsDialog(): void {
                 <button class="close-btn" title="Close">&times;</button>
             </div>
             <div class="api-docs-body">
+                <div class="api-experimental-notice">
+                    <strong>Experimental Feature</strong> - The Scripting API is under development and may not work reliably in all configurations.
+                </div>
+
                 <div class="api-status ${apiEnabled ? 'enabled' : 'disabled'}">
                     <span class="status-indicator"></span>
                     <span>API is ${apiEnabled ? 'enabled' : 'disabled'}</span>

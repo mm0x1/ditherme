@@ -19,6 +19,7 @@ import { initVideoEngine, getVideoManager } from './engine/video/index.ts';
 import { initTimeline, setTimeline } from './ui/video/timeline.ts';
 import { getProgressModal } from './ui/video/progress-modal.ts';
 import { showExportDialog } from './ui/video/export-dialog.ts';
+import { isElectron, onMenuAction, setupElectronBodyClass } from './utils/electron-bridge.ts';
 
 // Coloris color picker
 import '@melloware/coloris/dist/coloris.css';
@@ -143,6 +144,10 @@ function init(): void {
 
         // Initialize keyboard shortcuts
         initKeyboardShortcuts();
+
+        // Setup Electron-specific features
+        setupElectronBodyClass();
+        initElectronMenuHandler();
         console.timeEnd('handlers-init');
 
         // Listen for dither events
@@ -496,6 +501,100 @@ async function handleVideoExport(): Promise<void> {
             console.error('Export failed:', error);
         }
     }
+}
+
+/**
+ * Initialize Electron native menu handler
+ */
+function initElectronMenuHandler(): void {
+    if (!isElectron()) return;
+
+    onMenuAction((action: string) => {
+        console.log('Menu action:', action);
+
+        switch (action) {
+            // File menu
+            case 'open':
+            case 'open-video':
+                document.getElementById('file-input')?.click();
+                break;
+            case 'save':
+                document.querySelector<HTMLButtonElement>('[data-action="save"]')?.click();
+                break;
+            case 'save-as':
+                document.querySelector<HTMLButtonElement>('[data-action="save-as"]')?.click();
+                break;
+            case 'export-preset:web-png':
+            case 'export-preset:web-jpg':
+            case 'export-preset:hq-png':
+            case 'export-preset:social':
+                const presetId = action.replace('export-preset:', '');
+                const presetBtn = document.querySelector<HTMLButtonElement>(`[data-action="export-preset"][data-preset="${presetId}"]`);
+                presetBtn?.click();
+                break;
+            case 'export-video':
+                handleVideoExport();
+                break;
+            case 'batch':
+                showBatchDialog();
+                break;
+
+            // Edit menu
+            case 'undo':
+                if (app.canUndo()) {
+                    app.undo();
+                    setStatus('Undone');
+                }
+                break;
+            case 'redo':
+                if (app.canRedo()) {
+                    app.redo();
+                    setStatus('Redone');
+                }
+                break;
+            case 'copy':
+                document.querySelector<HTMLButtonElement>('[data-action="copy"]')?.click();
+                break;
+            case 'paste':
+                document.querySelector<HTMLButtonElement>('[data-action="paste"]')?.click();
+                break;
+            case 'reset-adjustments':
+                document.querySelector<HTMLButtonElement>('[data-action="reset-adjustments"]')?.click();
+                break;
+            case 'settings':
+                showSettingsDialog();
+                break;
+
+            // View menu
+            case 'zoom-in':
+                document.querySelector<HTMLButtonElement>('[data-action="zoom-in"]')?.click();
+                break;
+            case 'zoom-out':
+                document.querySelector<HTMLButtonElement>('[data-action="zoom-out"]')?.click();
+                break;
+            case 'fit-to-view':
+                document.querySelector<HTMLButtonElement>('[data-action="fit-to-view"]')?.click();
+                break;
+            case 'actual-size':
+                document.querySelector<HTMLButtonElement>('[data-action="actual-size"]')?.click();
+                break;
+            case 'toggle-original':
+                const showOriginal = document.getElementById('show-original') as HTMLInputElement;
+                if (showOriginal) {
+                    showOriginal.checked = !showOriginal.checked;
+                    showOriginal.dispatchEvent(new Event('change'));
+                }
+                break;
+
+            // Help menu
+            case 'help':
+                showHelpDialog();
+                break;
+            case 'about':
+                showAboutDialog();
+                break;
+        }
+    });
 }
 
 // Initialize when DOM is ready

@@ -1,0 +1,135 @@
+# electron-builder configuration
+# https://www.electron.build/configuration
+
+appId: com.dithertoy.app
+productName: dithertoy
+
+# Output directories
+directories:
+  buildResources: build
+  output: release
+
+# Files to include in the build
+files:
+  - out/**/*
+
+# Extra resources (WASM files)
+extraResources:
+  - from: public/wasm
+    to: wasm
+    filter:
+      - "**/*"
+
+# ASAR packaging
+asar: true
+asarUnpack:
+  - "**/*.wasm"
+  - "**/*.node"
+
+# macOS configuration
+mac:
+  category: public.app-category.graphics-design
+  target:
+    - target: dmg
+      arch:
+        - x64
+        - arm64
+    - target: zip
+      arch:
+        - x64
+        - arm64
+  darkModeSupport: true
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+  icon: build/icon.icns
+
+# DMG configuration
+dmg:
+  contents:
+    - x: 130
+      y: 220
+    - x: 410
+      y: 220
+      type: link
+      path: /Applications
+  window:
+    width: 540
+    height: 380
+
+# Linux configuration
+linux:
+  target:
+    - AppImage
+    - deb
+  category: Graphics
+  icon: build/icons
+  synopsis: Professional dithering application
+  description: A cross-platform dithering application with support for various algorithms
+
+# Debian package
+deb:
+  depends:
+    - libgtk-3-0
+    - libnotify4
+    - libnss3
+    - libxss1
+    - libxtst6
+    - xdg-utils
+    - libatspi2.0-0
+    - libuuid1
+
+# AppImage configuration
+appImage:
+  artifactName: "${productName}-${version}-${arch}.AppImage"
+
+# Windows configuration
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+    - target: portable
+      arch:
+        - x64
+  icon: build/icon.ico
+
+# NSIS installer
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: dithertoy
+  artifactName: "${productName}-Setup-${version}.${ext}"
+
+# Portable configuration
+portable:
+  artifactName: "${productName}-Portable-${version}.${ext}"
+
+# Auto-update configuration (GitHub releases)
+publish:
+  provider: github
+  releaseType: release
+
+# File associations
+fileAssociations:
+  - ext: png
+    name: PNG Image
+    role: Editor
+  - ext: jpg
+    name: JPEG Image
+    role: Editor
+  - ext: jpeg
+    name: JPEG Image
+    role: Editor
+  - ext: gif
+    name: GIF Image
+    role: Editor
+  - ext: webp
+    name: WebP Image
+    role: Editor
+  - ext: bmp
+    name: BMP Image
+    role: Editor

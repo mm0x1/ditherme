@@ -864,6 +864,37 @@ progress::-webkit-progress-value {
     display: none !important;
 }
 
+/* ========== Electron-specific Styles ========== */
+
+/* Hide elements in Electron (e.g., HTML menu bar) */
+.is-electron .electron-hidden {
+    display: none !important;
+}
+
+/* macOS-specific styles */
+.is-electron.platform-darwin .menu-bar {
+    -webkit-app-region: drag;
+}
+
+.is-electron.platform-darwin .menu-bar .menu-item,
+.is-electron.platform-darwin .menu-bar .menu-action,
+.is-electron.platform-darwin .menu-bar button {
+    -webkit-app-region: no-drag;
+}
+
+/* Windows/Linux: show window controls in menu bar if needed */
+.is-electron.platform-win32 .menu-bar,
+.is-electron.platform-linux .menu-bar {
+    -webkit-app-region: drag;
+}
+
+.is-electron.platform-win32 .menu-bar .menu-item,
+.is-electron.platform-win32 .menu-bar .menu-action,
+.is-electron.platform-linux .menu-bar .menu-item,
+.is-electron.platform-linux .menu-bar .menu-action {
+    -webkit-app-region: no-drag;
+}
+
 /* Focus visible */
 :focus-visible {
     outline: 2px solid var(--accent-primary);

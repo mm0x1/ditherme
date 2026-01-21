@@ -3,6 +3,10 @@
     "version": "1.0.0",
     "type": "module",
     "description": "cross-platform dithering application",
+    "author": {
+        "name": "mm0x1",
+        "email": "mm0x1@users.noreply.github.com"
+    },
     "main": "out/main/index.js",
     "scripts": {
         "dev": "vite",

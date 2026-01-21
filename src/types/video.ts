@@ -1,5 +1,5 @@
 /**
- * Video processing types for Ditherista
+ * Video processing types for dithertoy
  */
 
 /**

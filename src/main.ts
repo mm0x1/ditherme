@@ -1,5 +1,5 @@
 /**
- * Ditherista - Professional Dithering Application
+ * dithertoy - Professional Dithering Application
  * Main entry point
  */
 
@@ -44,7 +44,7 @@ function setStatus(message: string): void {
  * Initialize the application
  */
 function init(): void {
-    console.log('Ditherista initializing...');
+    console.log('dithertoy initializing...');
 
     try {
         // Initialize Coloris color picker
@@ -129,10 +129,10 @@ function init(): void {
 
         // Ready
         setStatus('Ready - Drop an image or use File > Open');
-        console.log('Ditherista ready');
+        console.log('dithertoy ready');
 
     } catch (error) {
-        console.error('Failed to initialize Ditherista:', error);
+        console.error('Failed to initialize dithertoy:', error);
         setStatus('Initialization failed');
     }
 }

@@ -5,7 +5,12 @@
 
 import { app } from '../../app.ts';
 import type { VideoMetadata } from '../../types/video.ts';
-import { getVideoManager } from '../../engine/video/video-manager.ts';
+
+/**
+ * Throttle interval for scrubbing (ms)
+ * This limits frame requests during rapid timeline dragging
+ */
+const SCRUB_THROTTLE_MS = 50;
 
 /**
  * Timeline controls interface
@@ -236,39 +241,83 @@ export function initTimeline(container: HTMLElement): TimelineControls {
 
     // Scrubber interaction
     let scrubbing = false;
+    let lastScrubTime = 0;
+    let pendingScrubEvent: MouseEvent | TouchEvent | null = null;
+    let scrubThrottleTimer: ReturnType<typeof setTimeout> | null = null;
+
+    /**
+     * Throttled scrub handler to limit frame requests during rapid dragging
+     */
+    function throttledScrub(event: MouseEvent | TouchEvent): void {
+        const now = performance.now();
+        const elapsed = now - lastScrubTime;
+
+        if (elapsed >= SCRUB_THROTTLE_MS) {
+            // Enough time has passed, handle immediately
+            lastScrubTime = now;
+            handleScrub(event);
+        } else {
+            // Store the event and schedule for later
+            pendingScrubEvent = event;
+            if (scrubThrottleTimer === null) {
+                scrubThrottleTimer = setTimeout(() => {
+                    scrubThrottleTimer = null;
+                    lastScrubTime = performance.now();
+                    if (pendingScrubEvent) {
+                        handleScrub(pendingScrubEvent);
+                        pendingScrubEvent = null;
+                    }
+                }, SCRUB_THROTTLE_MS - elapsed);
+            }
+        }
+    }
+
+    /**
+     * Cleanup throttle state when scrubbing ends
+     */
+    function endScrub(): void {
+        scrubbing = false;
+        // Process any pending scrub event immediately on release
+        if (pendingScrubEvent) {
+            handleScrub(pendingScrubEvent);
+            pendingScrubEvent = null;
+        }
+        if (scrubThrottleTimer !== null) {
+            clearTimeout(scrubThrottleTimer);
+            scrubThrottleTimer = null;
+        }
+    }
 
     scrubber.addEventListener('mousedown', (e) => {
         scrubbing = true;
+        lastScrubTime = 0; // Reset to allow immediate first scrub
         pause();
         handleScrub(e);
     });
 
     document.addEventListener('mousemove', (e) => {
         if (scrubbing) {
-            handleScrub(e);
+            throttledScrub(e);
         }
     });
 
-    document.addEventListener('mouseup', () => {
-        scrubbing = false;
-    });
+    document.addEventListener('mouseup', endScrub);
 
     // Touch support
     scrubber.addEventListener('touchstart', (e) => {
         scrubbing = true;
+        lastScrubTime = 0; // Reset to allow immediate first scrub
         pause();
         handleScrub(e);
     });
 
     document.addEventListener('touchmove', (e) => {
         if (scrubbing) {
-            handleScrub(e);
+            throttledScrub(e);
         }
     });
 
-    document.addEventListener('touchend', () => {
-        scrubbing = false;
-    });
+    document.addEventListener('touchend', endScrub);
 
     // Keyboard shortcuts
     function handleKeyboard(e: KeyboardEvent): void {

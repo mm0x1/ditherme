@@ -2,6 +2,12 @@ import { app, shouldUpdateViewport, shouldInvalidateVideoCache } from '../app.ts
 import { getVideoManager } from '../engine/video/video-manager.ts';
 
 /**
+ * Debounce delay for video settings changes (ms)
+ * This prevents excessive cache invalidation during rapid slider adjustments
+ */
+const VIDEO_SETTINGS_DEBOUNCE_MS = 50;
+
+/**
  * Viewport controls interface
  */
 export interface ViewportControls {
@@ -46,6 +52,9 @@ export function initViewport(container: HTMLElement): ViewportControls {
     // Track current video frame for rendering
     let currentVideoFrame: ImageData | null = null;
     let pendingVideoFrame: number | null = null;
+
+    // Debounce timer for video settings changes
+    let videoSettingsDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 
     /**
      * Render the current image to canvas
@@ -391,12 +400,23 @@ export function initViewport(container: HTMLElement): ViewportControls {
             render();
         }
 
-        // Invalidate video cache when dither settings change
+        // Debounce video cache invalidation when dither settings change
+        // This prevents excessive re-dithering during rapid slider adjustments
         if (e.detail.newState.isVideoMode && shouldInvalidateVideoCache(e.detail.changes)) {
-            const videoManager = getVideoManager();
-            videoManager.invalidateCache();
-            currentVideoFrame = null;
-            render();
+            // Cancel any pending invalidation
+            if (videoSettingsDebounceTimer !== null) {
+                clearTimeout(videoSettingsDebounceTimer);
+            }
+
+            videoSettingsDebounceTimer = setTimeout(() => {
+                videoSettingsDebounceTimer = null;
+                const videoManager = getVideoManager();
+                videoManager.invalidateCache();
+                // Reset pendingVideoFrame to force refetch, but keep currentVideoFrame
+                // This shows the old frame while the new one processes (instant feedback)
+                pendingVideoFrame = null;
+                render();
+            }, VIDEO_SETTINGS_DEBOUNCE_MS);
         }
     });
 

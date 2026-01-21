@@ -41,6 +41,13 @@ export interface UserSettings {
     // Recently used
     recentAlgorithms: string[];
     maxRecentItems: number;
+
+    // API settings
+    apiEnabled: boolean;
+    apiPort: number;
+    apiBindAddress: string;
+    apiAuthEnabled: boolean;
+    apiAuthToken: string | null;
 }
 
 /**
@@ -71,4 +78,10 @@ export const DEFAULT_SETTINGS: UserSettings = {
     defaultExportPreset: 'web-png',
     recentAlgorithms: [],
     maxRecentItems: 10,
+    // API defaults
+    apiEnabled: true,
+    apiPort: 7842,
+    apiBindAddress: '127.0.0.1',
+    apiAuthEnabled: false,
+    apiAuthToken: null,
 };

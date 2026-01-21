@@ -1452,6 +1452,168 @@ progress::-webkit-progress-value {
     margin: var(--spacing-xs) 0 0 24px;
 }
 
+.setting-label input[type="text"] {
+    padding: 4px 8px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    color: var(--text-primary);
+    font-size: var(--font-size-sm);
+}
+
+.token-input-group {
+    display: flex;
+    gap: var(--spacing-sm);
+    margin-left: auto;
+    width: 240px;
+}
+
+.token-input-group input[type="text"] {
+    flex: 1;
+    min-width: 0;
+}
+
+/* API Docs Dialog */
+.api-docs-dialog .modal-content {
+    max-width: 600px;
+}
+
+.api-docs-body {
+    padding: var(--spacing-md);
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+.api-status {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: 4px;
+    margin-bottom: var(--spacing-lg);
+    font-size: var(--font-size-sm);
+}
+
+.api-status.enabled {
+    background: rgba(78, 201, 176, 0.15);
+    color: var(--success);
+}
+
+.api-status.disabled {
+    background: rgba(241, 76, 76, 0.15);
+    color: var(--error);
+}
+
+.api-status .status-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: currentColor;
+}
+
+.api-status .status-hint {
+    color: var(--text-muted);
+    font-size: var(--font-size-xs);
+    margin-left: auto;
+}
+
+.api-info-section {
+    margin-bottom: var(--spacing-lg);
+}
+
+.api-info-section h4 {
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    margin-bottom: var(--spacing-sm);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.api-url-box {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    background: var(--bg-tertiary);
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+}
+
+.api-url-box code {
+    flex: 1;
+    font-family: var(--font-mono);
+    font-size: var(--font-size-sm);
+    color: var(--text-accent);
+}
+
+.api-links {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+}
+
+.api-link {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm) var(--spacing-md);
+    background: var(--bg-tertiary);
+    border-radius: 4px;
+    text-decoration: none;
+    transition: var(--transition-fast);
+}
+
+.api-link:hover {
+    background: var(--bg-hover);
+}
+
+.api-link .link-method {
+    font-family: var(--font-mono);
+    font-size: var(--font-size-xs);
+    font-weight: bold;
+    color: var(--success);
+    min-width: 40px;
+}
+
+.api-link .link-path {
+    font-family: var(--font-mono);
+    font-size: var(--font-size-sm);
+    color: var(--text-accent);
+    flex: 1;
+}
+
+.api-link .link-desc {
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
+}
+
+.api-docs-desc {
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    margin-bottom: var(--spacing-sm);
+}
+
+.code-example {
+    background: var(--bg-tertiary);
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+}
+
+.code-example pre {
+    margin: 0;
+    padding: var(--spacing-md);
+    overflow-x: auto;
+}
+
+.code-example code {
+    font-family: var(--font-mono);
+    font-size: var(--font-size-xs);
+    color: var(--text-primary);
+    white-space: pre;
+    line-height: 1.5;
+}
+
 /* Batch Dialog */
 .batch-dialog .modal-content {
     max-width: 500px;

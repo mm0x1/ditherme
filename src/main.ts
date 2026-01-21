@@ -12,6 +12,7 @@ import { initDragAndDrop, initFileInput, initClipboard, initSaveHandlers, downlo
 import { settings } from './utils/settings.ts';
 import { DEFAULT_EXPORT_PRESETS } from './types/settings.ts';
 import { showHelpDialog, showAboutDialog } from './ui/help-dialog.ts';
+import { showAPIDocsDialog } from './ui/api-docs-dialog.ts';
 import { showBatchDialog } from './ui/batch-dialog.ts';
 import { showSettingsDialog } from './ui/settings-dialog.ts';
 import { initDitherEngine } from './engine/dither.ts';
@@ -20,6 +21,7 @@ import { initTimeline, setTimeline } from './ui/video/timeline.ts';
 import { getProgressModal } from './ui/video/progress-modal.ts';
 import { showExportDialog } from './ui/video/export-dialog.ts';
 import { isElectron, onMenuAction, setupElectronBodyClass } from './utils/electron-bridge.ts';
+import { initAPIBridge } from './utils/api-bridge.ts';
 
 // Coloris color picker
 import '@melloware/coloris/dist/coloris.css';
@@ -148,6 +150,9 @@ function init(): void {
         // Setup Electron-specific features
         setupElectronBodyClass();
         initElectronMenuHandler();
+
+        // Initialize API bridge
+        initAPIBridge();
         console.timeEnd('handlers-init');
 
         // Listen for dither events
@@ -229,6 +234,13 @@ function initMenus(): void {
     document.querySelectorAll('[data-action="about"]').forEach(btn => {
         btn.addEventListener('click', () => {
             showAboutDialog();
+        });
+    });
+
+    // API Documentation action
+    document.querySelectorAll('[data-action="api-docs"]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            showAPIDocsDialog();
         });
     });
 
@@ -413,6 +425,7 @@ function initKeyboardShortcuts(): void {
     });
 }
 
+
 /**
  * Initialize video export button and handlers
  */
@@ -589,6 +602,9 @@ function initElectronMenuHandler(): void {
             // Help menu
             case 'help':
                 showHelpDialog();
+                break;
+            case 'api-docs':
+                showAPIDocsDialog();
                 break;
             case 'about':
                 showAboutDialog();

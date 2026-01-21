@@ -207,6 +207,11 @@ export function createMenu(mainWindow: BrowserWindow): void {
                 },
                 { type: 'separator' },
                 {
+                    label: 'API Documentation',
+                    click: () => sendMenuAction(mainWindow, 'api-docs')
+                },
+                { type: 'separator' },
+                {
                     label: 'About ditherme',
                     click: () => sendMenuAction(mainWindow, 'about')
                 },

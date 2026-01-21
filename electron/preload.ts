@@ -22,6 +22,12 @@ interface FileResult {
     data: Uint8Array;
 }
 
+// API request handler type
+interface APIRequestHandler {
+    id: number;
+    request: unknown;
+}
+
 // Expose protected methods that allow the renderer to interact with main process
 contextBridge.exposeInMainWorld('electronAPI', {
     // Platform detection
@@ -72,5 +78,33 @@ contextBridge.exposeInMainWorld('electronAPI', {
     installUpdate: () => ipcRenderer.send('install-update'),
 
     // DevTools
-    toggleDevTools: () => ipcRenderer.send('toggle-devtools')
+    toggleDevTools: () => ipcRenderer.send('toggle-devtools'),
+
+    // API Server
+    getAPIServerStatus: (): Promise<{ running: boolean; port: number }> =>
+        ipcRenderer.invoke('api-server-status'),
+
+    startAPIServer: (config: { port: number; bindAddress: string; authEnabled: boolean; authToken: string | null }): Promise<{ success: boolean; error?: string }> =>
+        ipcRenderer.invoke('api-server-start', config),
+
+    stopAPIServer: (): Promise<{ success: boolean }> =>
+        ipcRenderer.invoke('api-server-stop'),
+
+    // API request handling (main process forwards HTTP requests to renderer)
+    onAPIRequest: (callback: (data: APIRequestHandler) => void) => {
+        const listener = (_event: IpcRendererEvent, data: APIRequestHandler) => callback(data);
+        ipcRenderer.on('api-request', listener);
+        return () => ipcRenderer.removeListener('api-request', listener);
+    },
+
+    sendAPIResponse: (id: number, response: unknown, error?: string) => {
+        ipcRenderer.send('api-response', { id, response, error });
+    },
+
+    // API server status change events
+    onAPIServerStatusChanged: (callback: (status: { running: boolean; port: number }) => void) => {
+        const listener = (_event: IpcRendererEvent, status: { running: boolean; port: number }) => callback(status);
+        ipcRenderer.on('api-server-status-changed', listener);
+        return () => ipcRenderer.removeListener('api-server-status-changed', listener);
+    }
 });

@@ -23,6 +23,23 @@ interface UpdateInfo {
     version: string;
 }
 
+interface APIServerConfig {
+    port: number;
+    bindAddress: string;
+    authEnabled: boolean;
+    authToken: string | null;
+}
+
+interface APIServerStatus {
+    running: boolean;
+    port: number;
+}
+
+interface APIRequestData {
+    id: number;
+    request: unknown;
+}
+
 /**
  * Electron API exposed to renderer via contextBridge
  */
@@ -56,6 +73,14 @@ interface ElectronAPI {
 
     // DevTools
     toggleDevTools: () => void;
+
+    // API Server
+    getAPIServerStatus: () => Promise<APIServerStatus>;
+    startAPIServer: (config: APIServerConfig) => Promise<{ success: boolean; error?: string }>;
+    stopAPIServer: () => Promise<{ success: boolean }>;
+    onAPIRequest: (callback: (data: APIRequestData) => void) => () => void;
+    sendAPIResponse: (id: number, response: unknown, error?: string) => void;
+    onAPIServerStatusChanged: (callback: (status: APIServerStatus) => void) => () => void;
 }
 
 declare global {
@@ -64,4 +89,13 @@ declare global {
     }
 }
 
-export type { ElectronAPI, OpenFileOptions, SaveFileOptions, FileResult, UpdateInfo };
+export type {
+    ElectronAPI,
+    OpenFileOptions,
+    SaveFileOptions,
+    FileResult,
+    UpdateInfo,
+    APIServerConfig,
+    APIServerStatus,
+    APIRequestData
+};

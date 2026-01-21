@@ -9,6 +9,7 @@ import { createMenu } from './menu';
 import { setupDialogHandlers } from './dialogs';
 import { setupAutoUpdater } from './updater';
 import { getWasmPath } from './paths';
+import { initAPIServer, setupAPIServerIPC, getAPIServer } from './api-server';
 
 // Prevent garbage collection of window
 let mainWindow: BrowserWindow | null = null;
@@ -65,9 +66,12 @@ function createWindow(): void {
 }
 
 // Handle app ready
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
     // Setup dialog handlers once (before creating windows)
     setupDialogHandlers();
+
+    // Setup API server IPC handlers
+    setupAPIServerIPC();
 
     createWindow();
 
@@ -77,6 +81,26 @@ app.whenReady().then(() => {
             createWindow();
         }
     });
+
+    // Initialize and start API server with default settings
+    // Settings will be synced from renderer when it connects
+    const apiServer = initAPIServer({
+        port: 7842,
+        bindAddress: '127.0.0.1',
+        authEnabled: false,
+        authToken: null
+    });
+
+    if (mainWindow) {
+        apiServer.setMainWindow(mainWindow);
+    }
+
+    try {
+        await apiServer.start();
+        console.log('[Main] API server started');
+    } catch (error) {
+        console.error('[Main] Failed to start API server:', error);
+    }
 
     // Setup auto-updater (production only)
     if (!process.env.VITE_DEV_SERVER_URL) {
@@ -89,6 +113,14 @@ app.on('window-all-closed', () => {
     // macOS: keep app in dock unless explicitly quit
     if (process.platform !== 'darwin') {
         app.quit();
+    }
+});
+
+// Stop API server before quitting
+app.on('before-quit', async () => {
+    const apiServer = getAPIServer();
+    if (apiServer) {
+        await apiServer.stop();
     }
 });
 

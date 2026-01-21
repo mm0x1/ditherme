@@ -24,7 +24,9 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: mac-builds
-          path: release/*.{dmg,zip}
+          path: |
+            release/*.dmg
+            release/*.zip
 
   build-linux:
     runs-on: ubuntu-latest
@@ -41,7 +43,9 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: linux-builds
-          path: release/*.{AppImage,deb}
+          path: |
+            release/*.AppImage
+            release/*.deb
 
   build-windows:
     runs-on: windows-latest
@@ -70,6 +74,7 @@ jobs:
         with:
           path: artifacts
           merge-multiple: true
+      - run: ls -la artifacts/
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ inputs.version }}

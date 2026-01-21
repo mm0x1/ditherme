@@ -1,15 +1,40 @@
 import { app } from '../app.ts';
+import { isSupportedVideoType, SUPPORTED_VIDEO_TYPES, MAX_VIDEO_DURATION } from '../types/video.ts';
+import { getVideoManager } from './video/video-manager.ts';
+import { getTimeline } from '../ui/video/timeline.ts';
 
 /**
  * Supported image MIME types
  */
-const SUPPORTED_TYPES = [
+const SUPPORTED_IMAGE_TYPES = [
     'image/png',
     'image/jpeg',
     'image/gif',
     'image/bmp',
     'image/webp'
 ];
+
+/**
+ * All supported file types (images + videos)
+ */
+const SUPPORTED_TYPES = [
+    ...SUPPORTED_IMAGE_TYPES,
+    ...SUPPORTED_VIDEO_TYPES
+];
+
+/**
+ * Check if a file is a video
+ */
+function isVideoFile(file: File): boolean {
+    return isSupportedVideoType(file.type);
+}
+
+/**
+ * Check if a file is an image
+ */
+function isImageFile(file: File): boolean {
+    return SUPPORTED_IMAGE_TYPES.includes(file.type);
+}
 
 /**
  * Maximum image dimension
@@ -33,7 +58,7 @@ export type ImageLoadResult = {
  */
 export async function loadImageFile(file: File): Promise<ImageLoadResult> {
     // Validate file type
-    if (!SUPPORTED_TYPES.includes(file.type)) {
+    if (!isImageFile(file)) {
         return {
             ok: false,
             error: `Unsupported file type: ${file.type}. Supported types: PNG, JPEG, GIF, BMP, WebP`
@@ -130,7 +155,7 @@ export async function loadImageFromClipboard(): Promise<ImageLoadResult> {
 
         for (const item of clipboardItems) {
             for (const type of item.types) {
-                if (SUPPORTED_TYPES.includes(type)) {
+                if (SUPPORTED_IMAGE_TYPES.includes(type)) {
                     const blob = await item.getType(type);
                     const file = new File([blob], 'clipboard-image', { type });
                     return loadImageFile(file);
@@ -269,7 +294,13 @@ export function initDragAndDrop(viewport: HTMLElement): void {
         if (!files || files.length === 0) return;
 
         const file = files[0];
-        await handleImageLoad(file);
+
+        // Check if it's a video file
+        if (isVideoFile(file)) {
+            await handleVideoLoad(file);
+        } else {
+            await handleImageLoad(file);
+        }
     });
 }
 
@@ -283,7 +314,12 @@ export function initFileInput(): void {
     fileInput.addEventListener('change', async () => {
         const file = fileInput.files?.[0];
         if (file) {
-            await handleImageLoad(file);
+            // Check if it's a video file
+            if (isVideoFile(file)) {
+                await handleVideoLoad(file);
+            } else {
+                await handleImageLoad(file);
+            }
             // Reset input so same file can be selected again
             fileInput.value = '';
         }
@@ -307,6 +343,18 @@ export function initFileInput(): void {
  * Handle image load - update app state
  */
 async function handleImageLoad(file: File): Promise<void> {
+    // Exit video mode if active
+    if (app.getState().isVideoMode) {
+        const videoManager = getVideoManager();
+        videoManager.closeVideo();
+        app.setState({
+            isVideoMode: false,
+            videoFile: null,
+            videoMetadata: null,
+            currentFrame: 0
+        });
+    }
+
     setStatus('Loading image...');
 
     const result = await loadImageFile(file);
@@ -332,6 +380,54 @@ async function handleImageLoad(file: File): Promise<void> {
 }
 
 /**
+ * Handle video load - update app state
+ */
+async function handleVideoLoad(file: File): Promise<void> {
+    setStatus('Loading video...');
+
+    try {
+        const videoManager = getVideoManager();
+        const metadata = await videoManager.loadVideo(file);
+
+        // Validate duration
+        if (metadata.duration > MAX_VIDEO_DURATION) {
+            videoManager.closeVideo();
+            setStatus(`Error: Video too long (${metadata.duration.toFixed(1)}s). Maximum duration is ${MAX_VIDEO_DURATION}s`);
+            return;
+        }
+
+        // Update app state
+        app.setState({
+            isVideoMode: true,
+            videoFile: file,
+            videoMetadata: metadata,
+            currentFrame: 0,
+            isPlaying: false,
+            sourceImage: null,
+            ditheredImage: null,
+            originalFileName: file.name
+        });
+
+        // Emit video loaded event
+        app.emit('videoloaded', {
+            metadata,
+            fileName: file.name
+        });
+
+        // Initialize timeline if available
+        const timeline = getTimeline();
+        if (timeline) {
+            timeline.setVideo(metadata);
+        }
+
+        setStatus(`Loaded: ${file.name} (${metadata.width}×${metadata.height}, ${metadata.duration.toFixed(1)}s, ${metadata.frameCount} frames)`);
+    } catch (error) {
+        setStatus(`Error: ${error instanceof Error ? error.message : String(error)}`);
+        console.error('Video load error:', error);
+    }
+}
+
+/**
  * Set up clipboard handlers
  */
 export function initClipboard(): void {
@@ -346,7 +442,7 @@ export function initClipboard(): void {
         if (!items) return;
 
         for (const item of items) {
-            if (SUPPORTED_TYPES.includes(item.type)) {
+            if (SUPPORTED_IMAGE_TYPES.includes(item.type)) {
                 e.preventDefault();
                 const file = item.getAsFile();
                 if (file) {

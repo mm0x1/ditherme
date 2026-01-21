@@ -8,8 +8,12 @@ import { initViewport, initViewControls } from './ui/viewport.ts';
 import { initSidebar } from './ui/sidebar.ts';
 import { initAdjustments, initDitherSettings } from './ui/adjustments.ts';
 import { initPalette } from './ui/palette.ts';
-import { initDragAndDrop, initFileInput, initClipboard, initSaveHandlers } from './engine/image.ts';
+import { initDragAndDrop, initFileInput, initClipboard, initSaveHandlers, downloadImage } from './engine/image.ts';
 import { initDitherEngine } from './engine/dither.ts';
+import { initVideoEngine, getVideoManager } from './engine/video/index.ts';
+import { initTimeline, setTimeline } from './ui/video/timeline.ts';
+import { getProgressModal } from './ui/video/progress-modal.ts';
+import { showExportDialog } from './ui/video/export-dialog.ts';
 
 // Coloris color picker
 import '@melloware/coloris/dist/coloris.css';
@@ -87,6 +91,21 @@ function init(): void {
 
         // Initialize dithering engine
         initDitherEngine();
+
+        // Initialize video engine (async, non-blocking)
+        initVideoEngine().then(() => {
+            console.log('Video engine initialized');
+        });
+
+        // Initialize video timeline
+        const timelineContainer = document.getElementById('timeline-container');
+        if (timelineContainer) {
+            const timeline = initTimeline(timelineContainer);
+            setTimeline(timeline);
+        }
+
+        // Initialize video export button
+        initVideoExport();
 
         // Initialize menu actions
         initMenus();
@@ -167,11 +186,110 @@ function initKeyboardShortcuts(): void {
         // Ctrl/Cmd + V: Paste (handled by browser, but we can override)
         // Already handled by initClipboard
 
+        // Ctrl/Cmd + E: Export video
+        if (cmdOrCtrl && e.key === 'e') {
+            e.preventDefault();
+            const state = app.getState();
+            if (state.isVideoMode && state.videoMetadata) {
+                handleVideoExport();
+            }
+        }
+
         // Escape: Deselect / close dialogs
         if (e.key === 'Escape') {
             // Future: close any open dialogs
         }
     });
+}
+
+/**
+ * Initialize video export button and handlers
+ */
+function initVideoExport(): void {
+    // Export video button
+    document.querySelectorAll('[data-action="export-video"]').forEach(btn => {
+        btn.addEventListener('click', handleVideoExport);
+    });
+
+    // Also handle save action for video mode
+    document.querySelectorAll('[data-action="save"]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const state = app.getState();
+
+            // If in video mode, show export dialog
+            if (state.isVideoMode && state.videoMetadata) {
+                handleVideoExport();
+                return;
+            }
+
+            // Otherwise, save image as usual (handled by initSaveHandlers)
+        });
+    });
+}
+
+/**
+ * Handle video export
+ */
+async function handleVideoExport(): Promise<void> {
+    const state = app.getState();
+
+    if (!state.isVideoMode || !state.videoMetadata) {
+        setStatus('No video loaded');
+        return;
+    }
+
+    // Show export dialog
+    const result = await showExportDialog(state.videoMetadata);
+
+    if (!result.confirmed || !result.options) {
+        return;
+    }
+
+    const progressModal = getProgressModal();
+    const videoManager = getVideoManager();
+
+    progressModal.onCancel = () => {
+        videoManager.cancelExport();
+    };
+
+    progressModal.show('Exporting Video...');
+
+    try {
+        const blob = await videoManager.exportVideo(
+            result.options,
+            state,
+            (progress) => {
+                progressModal.updateProgress(progress);
+            }
+        );
+
+        progressModal.hide();
+
+        // Generate filename
+        const baseName = state.originalFileName?.replace(/\.[^/.]+$/, '') || 'video';
+        const extension = result.options.format === 'gif' ? 'gif' : result.options.format;
+        const fileName = `${baseName}_dithered.${extension}`;
+
+        // Download the file
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        setStatus(`Exported: ${fileName}`);
+    } catch (error) {
+        if ((error as Error).message === 'Export cancelled') {
+            progressModal.hide();
+            setStatus('Export cancelled');
+        } else {
+            progressModal.setError((error as Error).message);
+            console.error('Export failed:', error);
+        }
+    }
 }
 
 // Initialize when DOM is ready

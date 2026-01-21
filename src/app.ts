@@ -52,8 +52,12 @@ const initialState: AppState = {
     },
 
     // Video
-    videoFrames: null,
+    videoFile: null,
+    videoMetadata: null,
     currentFrame: 0,
+    isVideoMode: false,
+    isPlaying: false,
+    playbackSpeed: 1,
     isProcessingVideo: false,
 
     // UI State
@@ -285,8 +289,29 @@ export function shouldUpdateViewport(changes: StateUpdate): boolean {
         'showOriginal',
         'zoom',
         'panX',
-        'panY'
+        'panY',
+        'currentFrame',
+        'isVideoMode'
     ];
 
     return viewportTriggers.some(key => key in changes);
+}
+
+/**
+ * Helper to check if state changes should invalidate video frame cache
+ */
+export function shouldInvalidateVideoCache(changes: StateUpdate): boolean {
+    const cacheTriggers: (keyof AppState)[] = [
+        'algorithm',
+        'options',
+        'palette',
+        'customPalette',
+        'colorMatch',
+        'adjustments',
+        'pixelScale',
+        'levels',
+        'mode'
+    ];
+
+    return cacheTriggers.some(key => key in changes);
 }

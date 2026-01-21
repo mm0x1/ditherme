@@ -1,4 +1,5 @@
-import type { AppState, StateChangeDetail } from './state.ts';
+import type { StateChangeDetail } from './state.ts';
+import type { VideoMetadata, VideoExportOptions, VideoProcessingProgress, DitheredFrame } from './video.ts';
 
 /**
  * Custom event map for type-safe event handling
@@ -10,6 +11,15 @@ export interface AppEventMap {
     'dithercomplete': CustomEvent<{ result: ImageData; duration: number }>;
     'dithererror': CustomEvent<{ error: Error }>;
     'progress': CustomEvent<{ progress: number; message?: string }>;
+    // Video events
+    'videoloaded': CustomEvent<{ metadata: VideoMetadata; fileName: string }>;
+    'videoframechange': CustomEvent<{ index: number; frame: DitheredFrame }>;
+    'videoplaystate': CustomEvent<{ playing: boolean }>;
+    'videoexportstart': CustomEvent<{ options: VideoExportOptions }>;
+    'videoexportprogress': CustomEvent<VideoProcessingProgress>;
+    'videoexportcomplete': CustomEvent<{ blob: Blob; filename: string }>;
+    'videoexporterror': CustomEvent<{ error: Error }>;
+    'videounloaded': CustomEvent<void>;
 }
 
 /**

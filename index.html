@@ -282,32 +282,8 @@
             </aside>
         </main>
 
-        <!-- Timeline (Video mode) -->
-        <footer id="timeline" class="timeline hidden">
-            <div class="timeline-controls">
-                <button class="btn-icon" data-action="frame-prev" title="Previous frame">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M6 6h2v12H6V6zm3.5 6l8.5 6V6l-8.5 6z"/>
-                    </svg>
-                </button>
-                <button class="btn-icon" data-action="play-pause" title="Play/Pause">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M8 5v14l11-7z"/>
-                    </svg>
-                </button>
-                <button class="btn-icon" data-action="frame-next" title="Next frame">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/>
-                    </svg>
-                </button>
-            </div>
-            <div class="timeline-scrubber">
-                <input type="range" id="timeline-slider" min="0" max="100" value="0">
-            </div>
-            <div class="timeline-info">
-                <span id="frame-counter">0 / 0</span>
-            </div>
-        </footer>
+        <!-- Timeline Container (Video mode - populated by timeline.ts) -->
+        <footer id="timeline-container" class="timeline-container"></footer>
 
         <!-- Status Bar -->
         <footer class="status-bar">
@@ -320,8 +296,8 @@
         </footer>
     </div>
 
-    <!-- Hidden file input -->
-    <input type="file" id="file-input" accept="image/png,image/jpeg,image/gif,image/bmp,image/webp" style="display: none;">
+    <!-- Hidden file input (accepts both images and videos) -->
+    <input type="file" id="file-input" accept="image/png,image/jpeg,image/gif,image/bmp,image/webp,video/mp4,video/webm,video/quicktime,video/x-msvideo" style="display: none;">
 
     <!-- Hidden color input for Coloris (positioned in right panel area) -->
     <input type="text" id="coloris-input" data-coloris style="position: fixed; top: 200px; right: 270px; width: 1px; height: 1px; opacity: 0; pointer-events: none;">

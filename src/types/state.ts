@@ -1,6 +1,7 @@
 import type { Algorithm } from './algorithms.ts';
 import type { AlgorithmOptions } from './options.ts';
 import type { Palette, ColorMatchMethod, QuantizationMethod } from './palette.ts';
+import type { VideoMetadata } from './video.ts';
 
 /**
  * Image adjustment parameters
@@ -47,8 +48,12 @@ export interface AppState {
     adjustments: ImageAdjustments;
 
     // Video
-    videoFrames: ImageData[] | null;
+    videoFile: File | null;
+    videoMetadata: VideoMetadata | null;
     currentFrame: number;
+    isVideoMode: boolean;
+    isPlaying: boolean;
+    playbackSpeed: number;      // 0.5, 1, 2
     isProcessingVideo: boolean;
 
     // UI State

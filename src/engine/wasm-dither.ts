@@ -172,7 +172,6 @@ let wasmLoadPromise: Promise<LibDitherModule> | null = null;
  */
 export async function initWasm(): Promise<LibDitherModule> {
     if (wasmModule) return wasmModule;
-
     if (wasmLoadPromise) return wasmLoadPromise;
 
     wasmLoadPromise = (async () => {
@@ -227,10 +226,18 @@ function imageDataToDitherImage(wasm: LibDitherModule, imageData: ImageData): nu
     const { width, height, data } = imageData;
     const imgPtr = wasm._DitherImage_new(width, height);
 
+    if (imgPtr === 0) {
+        console.error('[WASM] Failed to create DitherImage');
+        return 0;
+    }
+
+    // Don't apply gamma correction - input is already in sRGB
+    const correctGamma = 0;
+
     for (let y = 0; y < height; y++) {
         for (let x = 0; x < width; x++) {
             const i = (y * width + x) * 4;
-            wasm._DitherImage_set_pixel(imgPtr, x, y, data[i], data[i + 1], data[i + 2], 1);
+            wasm._DitherImage_set_pixel(imgPtr, x, y, data[i], data[i + 1], data[i + 2], correctGamma);
         }
     }
 
@@ -480,9 +487,21 @@ export async function wasmDitherMono(
 
     // Allocate output buffer
     const outPtr = wasm._malloc(pixelCount);
+    if (outPtr === 0) {
+        throw new Error('[WASM] Failed to allocate output buffer');
+    }
+
+    // Zero out the output buffer to ensure clean state
+    for (let i = 0; i < pixelCount; i++) {
+        wasm.HEAPU8[outPtr + i] = 0;
+    }
 
     // Create DitherImage from input
     const imgPtr = imageDataToDitherImage(wasm, imageData);
+    if (imgPtr === 0) {
+        wasm._free(outPtr);
+        throw new Error('[WASM] Failed to create DitherImage');
+    }
 
     try {
         const serpentine = (options as { serpentine?: boolean }).serpentine ? 1 : 0;
@@ -570,6 +589,22 @@ export async function wasmDitherMono(
 export function shouldUseWasm(algorithm: Algorithm): boolean {
     // List of algorithms that benefit from WASM
     const wasmAlgorithms = [
+        // Additional error diffusion kernels (not in JS)
+        'shiau-fan3', 'xot', 'diagonal', 'diffusion-1d', 'diffusion-2d',
+        'steve-pigeon', 'robert-kist',
+        // Additional ordered matrices (not in JS)
+        'ordered-blue-noise',
+        'ordered-clustered-v1', 'ordered-clustered-v2', 'ordered-clustered-v3',
+        'ordered-clustered-v4', 'ordered-clustered-v5', 'ordered-clustered-v6',
+        'ordered-clustered-v7', 'ordered-clustered-v8', 'ordered-clustered-v9',
+        'ordered-clustered-v10', 'ordered-clustered-v11',
+        'ordered-dispersed-v1', 'ordered-dispersed-v2', 'ordered-ulichney-void',
+        'ordered-nonrect-v1', 'ordered-nonrect-v2', 'ordered-nonrect-v3', 'ordered-nonrect-v4',
+        'ordered-ulichney-bayer5', 'ordered-ulichney-standard', 'ordered-ulichney-clustered',
+        'ordered-diagonal',
+        'ordered-im-circle5', 'ordered-im-circle6', 'ordered-im-circle7',
+        'ordered-im-45deg4', 'ordered-im-45deg6', 'ordered-im-45deg8',
+        'ordered-variable2', 'ordered-variable4', 'ordered-interleaved-gradient',
         // All Riemersma variants
         'riemersma-hilbert', 'riemersma-hilbert-mod', 'riemersma-peano',
         'riemersma-fass0', 'riemersma-fass1', 'riemersma-fass2',

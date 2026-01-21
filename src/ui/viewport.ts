@@ -1,4 +1,5 @@
-import { app, shouldUpdateViewport } from '../app.ts';
+import { app, shouldUpdateViewport, shouldInvalidateVideoCache } from '../app.ts';
+import { getVideoManager } from '../engine/video/video-manager.ts';
 
 /**
  * Viewport controls interface
@@ -42,6 +43,10 @@ export function initViewport(container: HTMLElement): ViewportControls {
 
     let animationFrameId: number | null = null;
 
+    // Track current video frame for rendering
+    let currentVideoFrame: ImageData | null = null;
+    let pendingVideoFrame: number | null = null;
+
     /**
      * Render the current image to canvas
      */
@@ -51,14 +56,24 @@ export function initViewport(container: HTMLElement): ViewportControls {
             cancelAnimationFrame(animationFrameId);
         }
 
-        animationFrameId = requestAnimationFrame(() => {
+        animationFrameId = requestAnimationFrame(async () => {
             const state = app.getState();
+
+            // Handle video mode
+            if (state.isVideoMode && state.videoMetadata) {
+                await renderVideoFrame(state);
+                return;
+            }
+
             const image = state.showOriginal ? state.sourceImage : (state.ditheredImage ?? state.sourceImage);
 
             // Update empty state visibility
             if (emptyState) {
-                emptyState.classList.toggle('hidden', image !== null);
+                emptyState.classList.toggle('hidden', image !== null || state.isVideoMode);
             }
+
+            // Update video mode indicator
+            container.classList.toggle('video-mode', state.isVideoMode);
 
             if (!image) {
                 // Clear canvas when no image
@@ -69,40 +84,92 @@ export function initViewport(container: HTMLElement): ViewportControls {
                 return;
             }
 
-            // Set canvas size to container size
-            const containerWidth = container.clientWidth;
-            const containerHeight = container.clientHeight;
-            canvas.width = containerWidth;
-            canvas.height = containerHeight;
-
-            // Clear canvas
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            // Calculate centered position
-            const { zoom, panX, panY } = state;
-            const scaledWidth = image.width * zoom;
-            const scaledHeight = image.height * zoom;
-            const centerX = (containerWidth - scaledWidth) / 2 + panX;
-            const centerY = (containerHeight - scaledHeight) / 2 + panY;
-
-            // Create temporary canvas for the image
-            const tempCanvas = new OffscreenCanvas(image.width, image.height);
-            const tempCtx = tempCanvas.getContext('2d')!;
-            tempCtx.putImageData(image, 0, 0);
-
-            // Disable image smoothing for pixel-perfect rendering
-            ctx.imageSmoothingEnabled = false;
-
-            // Draw scaled image
-            ctx.drawImage(
-                tempCanvas,
-                0, 0, image.width, image.height,
-                centerX, centerY, scaledWidth, scaledHeight
-            );
-
-            updateInfo(image);
+            renderImage(image, state);
             animationFrameId = null;
         });
+    }
+
+    /**
+     * Render a static image
+     */
+    function renderImage(image: ImageData, state: ReturnType<typeof app.getState>): void {
+        // Set canvas size to container size
+        const containerWidth = container.clientWidth;
+        const containerHeight = container.clientHeight;
+        canvas.width = containerWidth;
+        canvas.height = containerHeight;
+
+        // Clear canvas
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Calculate centered position
+        const { zoom, panX, panY } = state;
+        const scaledWidth = image.width * zoom;
+        const scaledHeight = image.height * zoom;
+        const centerX = (containerWidth - scaledWidth) / 2 + panX;
+        const centerY = (containerHeight - scaledHeight) / 2 + panY;
+
+        // Create temporary canvas for the image
+        const tempCanvas = new OffscreenCanvas(image.width, image.height);
+        const tempCtx = tempCanvas.getContext('2d')!;
+        tempCtx.putImageData(image, 0, 0);
+
+        // Disable image smoothing for pixel-perfect rendering
+        ctx.imageSmoothingEnabled = false;
+
+        // Draw scaled image
+        ctx.drawImage(
+            tempCanvas,
+            0, 0, image.width, image.height,
+            centerX, centerY, scaledWidth, scaledHeight
+        );
+
+        updateInfo(image);
+    }
+
+    /**
+     * Render a video frame
+     */
+    async function renderVideoFrame(state: ReturnType<typeof app.getState>): Promise<void> {
+        const frameIndex = state.currentFrame;
+
+        // Skip if we're already loading this frame
+        if (pendingVideoFrame === frameIndex && currentVideoFrame) {
+            renderImage(currentVideoFrame, state);
+            return;
+        }
+
+        pendingVideoFrame = frameIndex;
+
+        // Update empty state
+        if (emptyState) {
+            emptyState.classList.add('hidden');
+        }
+
+        // Update video mode indicator
+        container.classList.add('video-mode');
+
+        try {
+            const videoManager = getVideoManager();
+
+            // Check if we should show original source frame
+            if (state.showOriginal) {
+                const sourceFrame = await videoManager.getSourceFrame(frameIndex);
+                currentVideoFrame = sourceFrame.imageData;
+            } else {
+                const ditheredFrame = await videoManager.getDitheredFrame(frameIndex, state);
+                currentVideoFrame = ditheredFrame.imageData;
+            }
+
+            // Only render if this is still the requested frame
+            if (pendingVideoFrame === frameIndex) {
+                renderImage(currentVideoFrame, state);
+            }
+        } catch (error) {
+            console.error('[Viewport] Error loading video frame:', error);
+        }
+
+        animationFrameId = null;
     }
 
     /**
@@ -321,6 +388,14 @@ export function initViewport(container: HTMLElement): ViewportControls {
     // React to state changes
     app.on('statechange', (e) => {
         if (shouldUpdateViewport(e.detail.changes)) {
+            render();
+        }
+
+        // Invalidate video cache when dither settings change
+        if (e.detail.newState.isVideoMode && shouldInvalidateVideoCache(e.detail.changes)) {
+            const videoManager = getVideoManager();
+            videoManager.invalidateCache();
+            currentVideoFrame = null;
             render();
         }
     });

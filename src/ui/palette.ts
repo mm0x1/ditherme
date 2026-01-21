@@ -1,6 +1,9 @@
 import { app } from '../app.ts';
 import type { Palette, Color, BuiltInPalette, ColorMatchMethod } from '../types/index.ts';
 import { BUILTIN_PALETTES, getPalette } from '../data/palettes/presets.ts';
+import { paletteStorage } from '../utils/palette-storage.ts';
+import { showSavePaletteDialog } from './save-palette-dialog.ts';
+import { showExportPaletteDialog } from './export-palette-dialog.ts';
 
 const MIN_CUSTOM_COLORS = 2;
 const MAX_CUSTOM_COLORS = 16;
@@ -18,6 +21,12 @@ export function initPalette(container: HTMLElement): void {
     const addColorBtn = container.querySelector<HTMLButtonElement>('#add-color-btn');
     const removeColorBtn = container.querySelector<HTMLButtonElement>('#remove-color-btn');
     const colorCountSpan = container.querySelector<HTMLElement>('#color-count');
+
+    // Saved palettes elements
+    const savedPaletteSelect = container.querySelector<HTMLSelectElement>('#saved-palette-select');
+    const savePaletteBtn = container.querySelector<HTMLButtonElement>('#save-palette-btn');
+    const exportPaletteBtn = container.querySelector<HTMLButtonElement>('#export-palette-btn');
+    const deleteSavedPaletteBtn = container.querySelector<HTMLButtonElement>('#delete-saved-palette-btn');
 
     let currentSource = 'builtin';
 
@@ -63,6 +72,114 @@ export function initPalette(container: HTMLElement): void {
 
         if (customPaletteEditor) {
             customPaletteEditor.style.display = source === 'custom' ? '' : 'none';
+        }
+    }
+
+    /**
+     * Render saved palettes dropdown
+     */
+    function renderSavedPalettes(): void {
+        if (!savedPaletteSelect) return;
+
+        const palettes = paletteStorage.getAll();
+        const currentValue = savedPaletteSelect.value;
+
+        // Clear existing options except the first one
+        while (savedPaletteSelect.options.length > 1) {
+            savedPaletteSelect.remove(1);
+        }
+
+        // Add saved palettes
+        for (const palette of palettes) {
+            const option = document.createElement('option');
+            option.value = palette.id;
+            option.textContent = `${palette.name} (${palette.colors.length})`;
+            savedPaletteSelect.appendChild(option);
+        }
+
+        // Restore selection if still valid
+        if (currentValue && palettes.some(p => p.id === currentValue)) {
+            savedPaletteSelect.value = currentValue;
+        }
+
+        // Update delete button visibility
+        updateDeleteButtonVisibility();
+    }
+
+    /**
+     * Update delete button visibility
+     */
+    function updateDeleteButtonVisibility(): void {
+        if (deleteSavedPaletteBtn && savedPaletteSelect) {
+            deleteSavedPaletteBtn.style.display = savedPaletteSelect.value ? '' : 'none';
+        }
+    }
+
+    /**
+     * Handle save palette button click
+     */
+    async function handleSavePalette(): Promise<void> {
+        const state = app.getState();
+        const currentPalette = state.palette;
+
+        const result = await showSavePaletteDialog(currentPalette.name);
+
+        if (result.confirmed && result.name) {
+            paletteStorage.savePalette(result.name, currentPalette.colors, 'custom');
+            renderSavedPalettes();
+        }
+    }
+
+    /**
+     * Handle export palette button click
+     */
+    async function handleExportPalette(): Promise<void> {
+        const state = app.getState();
+        const currentPalette = state.palette;
+
+        await showExportPaletteDialog(currentPalette);
+    }
+
+    /**
+     * Handle saved palette selection
+     */
+    function handleSelectSavedPalette(): void {
+        if (!savedPaletteSelect) return;
+
+        const id = savedPaletteSelect.value;
+        if (!id) {
+            updateDeleteButtonVisibility();
+            return;
+        }
+
+        const savedPalette = paletteStorage.getById(id);
+        if (savedPalette) {
+            const palette: Palette = {
+                name: savedPalette.name,
+                colors: [...savedPalette.colors]
+            };
+            app.setState({ palette }, true);
+        }
+
+        updateDeleteButtonVisibility();
+    }
+
+    /**
+     * Handle delete saved palette
+     */
+    function handleDeleteSavedPalette(): void {
+        if (!savedPaletteSelect) return;
+
+        const id = savedPaletteSelect.value;
+        if (!id) return;
+
+        const savedPalette = paletteStorage.getById(id);
+        if (!savedPalette) return;
+
+        if (confirm(`Delete palette "${savedPalette.name}"?`)) {
+            paletteStorage.deletePalette(id);
+            savedPaletteSelect.value = '';
+            renderSavedPalettes();
         }
     }
 
@@ -210,6 +327,31 @@ export function initPalette(container: HTMLElement): void {
         });
     }
 
+    // Save palette button
+    if (savePaletteBtn) {
+        savePaletteBtn.addEventListener('click', handleSavePalette);
+    }
+
+    // Export palette button
+    if (exportPaletteBtn) {
+        exportPaletteBtn.addEventListener('click', handleExportPalette);
+    }
+
+    // Saved palette select
+    if (savedPaletteSelect) {
+        savedPaletteSelect.addEventListener('change', handleSelectSavedPalette);
+    }
+
+    // Delete saved palette button
+    if (deleteSavedPaletteBtn) {
+        deleteSavedPaletteBtn.addEventListener('click', handleDeleteSavedPalette);
+    }
+
+    // Listen for palette storage changes
+    paletteStorage.onChange(() => {
+        renderSavedPalettes();
+    });
+
     // Listen for state changes
     app.on('statechange', (e) => {
         if ('palette' in e.detail.changes || 'colorMatch' in e.detail.changes) {
@@ -219,6 +361,7 @@ export function initPalette(container: HTMLElement): void {
 
     // Initial update
     updateFromState();
+    renderSavedPalettes();
 }
 
 /**

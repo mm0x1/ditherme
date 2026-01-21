@@ -58,6 +58,18 @@ export interface Palette {
 }
 
 /**
+ * Saved palette with metadata for persistence
+ */
+export interface SavedPalette {
+    id: string;
+    name: string;
+    colors: Color[];
+    createdAt: number;
+    updatedAt: number;
+    source?: 'imported' | 'generated' | 'custom';
+}
+
+/**
  * LAB color matching options
  */
 export interface LABMatchOptions {

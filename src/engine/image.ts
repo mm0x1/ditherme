@@ -337,6 +337,13 @@ export function initFileInput(): void {
             fileInput.click();
         });
     });
+
+    // Menu open video action
+    document.querySelectorAll('[data-action="open-video"]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            fileInput.click();
+        });
+    });
 }
 
 /**

@@ -72,6 +72,7 @@ export class WebCodecsExtractor implements FrameExtractor {
     private metadata: VideoMetadata | null = null;
     private decoder: VideoDecoder | null = null;
     private mp4boxFile: MP4BoxFile | null = null;
+    private mp4boxModule: MP4BoxModule | null = null;
     private samples: MP4Sample[] = [];
     private pendingFrames: Map<number, (frame: VideoFrame) => void> = new Map();
     private decodedFrames: Map<number, VideoFrame> = new Map();
@@ -84,6 +85,7 @@ export class WebCodecsExtractor implements FrameExtractor {
 
         // Dynamic import mp4box
         const MP4Box = await import('mp4box');
+        this.mp4boxModule = MP4Box;
 
         return new Promise((resolve, reject) => {
             const mp4boxFile = MP4Box.createFile();
@@ -172,8 +174,8 @@ export class WebCodecsExtractor implements FrameExtractor {
             const trak = this.mp4boxFile?.getTrackById(track.id);
             if (trak) {
                 const avcC = trak.mdia?.minf?.stbl?.stsd?.entries?.[0]?.avcC;
-                if (avcC) {
-                    const stream = new MP4Box.DataStream(undefined, 0, MP4Box.DataStream.BIG_ENDIAN);
+                if (avcC && this.mp4boxModule) {
+                    const stream = new this.mp4boxModule.DataStream(undefined, 0, this.mp4boxModule.DataStream.BIG_ENDIAN);
                     avcC.write(stream);
                     return new Uint8Array(stream.buffer, 8); // Skip box header
                 }
@@ -255,6 +257,7 @@ export class WebCodecsExtractor implements FrameExtractor {
             this.decoder = null;
         }
         this.mp4boxFile = null;
+        this.mp4boxModule = null;
         this.samples = [];
         this.decodedFrames.clear();
         this.pendingFrames.clear();
@@ -411,15 +414,8 @@ type MP4VideoTrack = any;
 type MP4Track = any;
 type MP4DataStream = any;
 type MP4Sample = any;
+type MP4BoxModule = any;
 
 interface ArrayBufferWithFileStart extends ArrayBuffer {
     fileStart: number;
 }
-
-// Declare MP4Box namespace for codec description extraction
-declare const MP4Box: {
-    DataStream: {
-        new(buffer: ArrayBuffer | undefined, offset: number, endianness: number): MP4DataStream;
-        BIG_ENDIAN: number;
-    };
-};

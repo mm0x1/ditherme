@@ -51,7 +51,7 @@ export function initSidebar(container: HTMLElement): void {
                     ${isFavorite ? '★' : '☆'}
                 </button>
                 <span class="algorithm-name">${algo.name}</span>
-                ${showWasmBadge ? '<span class="wasm-badge" title="WASM accelerated - runs faster via WebAssembly">WASM</span>' : ''}
+                ${showWasmBadge ? '<span class="wasm-badge" data-tooltip="WASM accelerated">WASM</span>' : ''}
             </div>
         `;
     }
@@ -315,7 +315,7 @@ export function initSidebar(container: HTMLElement): void {
 
         if (item?.dataset.id) {
             const algorithmId = item.dataset.id as Algorithm;
-            app.setState({ algorithm: algorithmId });
+            app.setState({ algorithm: algorithmId }, true); // Save history for undo
         }
     });
 

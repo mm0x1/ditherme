@@ -142,7 +142,7 @@ export function initPalette(container: HTMLElement): void {
             const paletteId = builtinPaletteSelect.value as BuiltInPalette;
             const palette = getPalette(paletteId);
             if (palette) {
-                app.setState({ palette });
+                app.setState({ palette }, true); // Save history for undo
             }
         });
     }
@@ -151,7 +151,7 @@ export function initPalette(container: HTMLElement): void {
     if (colorMatchSelect) {
         colorMatchSelect.addEventListener('change', () => {
             const method = colorMatchSelect.value as ColorMatchMethod;
-            app.setState({ colorMatch: method });
+            app.setState({ colorMatch: method }, true); // Save history for undo
         });
     }
 

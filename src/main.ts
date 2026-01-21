@@ -11,8 +11,9 @@ import { initPalette } from './ui/palette.ts';
 import { initDragAndDrop, initFileInput, initClipboard, initSaveHandlers, downloadImage, downloadImageWithPreset } from './engine/image.ts';
 import { settings } from './utils/settings.ts';
 import { DEFAULT_EXPORT_PRESETS } from './types/settings.ts';
-import { showHelpDialog } from './ui/help-dialog.ts';
+import { showHelpDialog, showAboutDialog } from './ui/help-dialog.ts';
 import { showBatchDialog } from './ui/batch-dialog.ts';
+import { showSettingsDialog } from './ui/settings-dialog.ts';
 import { initDitherEngine } from './engine/dither.ts';
 import { initVideoEngine, getVideoManager } from './engine/video/index.ts';
 import { initTimeline, setTimeline } from './ui/video/timeline.ts';
@@ -209,6 +210,91 @@ function initMenus(): void {
     document.querySelectorAll('[data-action="batch"]').forEach(btn => {
         btn.addEventListener('click', () => {
             showBatchDialog();
+        });
+    });
+
+    // Settings action
+    document.querySelectorAll('[data-action="settings"]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            showSettingsDialog();
+        });
+    });
+
+    // About action
+    document.querySelectorAll('[data-action="about"]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            showAboutDialog();
+        });
+    });
+
+    // Copy action
+    document.querySelectorAll('[data-action="copy"]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const state = app.getState();
+            const image = state.ditheredImage || state.sourceImage;
+
+            if (!image) {
+                setStatus('No image to copy');
+                return;
+            }
+
+            try {
+                // Convert ImageData to blob
+                const canvas = document.createElement('canvas');
+                canvas.width = image.width;
+                canvas.height = image.height;
+                const ctx = canvas.getContext('2d')!;
+                ctx.putImageData(image, 0, 0);
+
+                const blob = await new Promise<Blob>((resolve, reject) => {
+                    canvas.toBlob(b => b ? resolve(b) : reject(new Error('Failed to create blob')), 'image/png');
+                });
+
+                await navigator.clipboard.write([
+                    new ClipboardItem({ 'image/png': blob })
+                ]);
+
+                setStatus('Copied to clipboard');
+            } catch (error) {
+                setStatus(`Copy failed: ${error instanceof Error ? error.message : String(error)}`);
+            }
+        });
+    });
+
+    // Paste action
+    document.querySelectorAll('[data-action="paste"]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            try {
+                const clipboardItems = await navigator.clipboard.read();
+                for (const item of clipboardItems) {
+                    for (const type of item.types) {
+                        if (type.startsWith('image/')) {
+                            const blob = await item.getType(type);
+                            const img = new Image();
+                            img.onload = () => {
+                                const canvas = document.createElement('canvas');
+                                canvas.width = img.width;
+                                canvas.height = img.height;
+                                const ctx = canvas.getContext('2d')!;
+                                ctx.drawImage(img, 0, 0);
+                                const imageData = ctx.getImageData(0, 0, img.width, img.height);
+
+                                app.setState({
+                                    sourceImage: imageData,
+                                    originalFileName: 'clipboard-image'
+                                });
+                                app.emit('imageloaded', { fileName: 'clipboard-image', imageData });
+                                setStatus('Pasted from clipboard');
+                            };
+                            img.src = URL.createObjectURL(blob);
+                            return;
+                        }
+                    }
+                }
+                setStatus('No image in clipboard');
+            } catch (error) {
+                setStatus(`Paste failed: ${error instanceof Error ? error.message : String(error)}`);
+            }
         });
     });
 

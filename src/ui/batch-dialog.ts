@@ -7,7 +7,16 @@ import { settings } from '../utils/settings.ts';
 import { DEFAULT_EXPORT_PRESETS, type ExportPreset } from '../types/settings.ts';
 import { processBatch, downloadBatchResults, type BatchJob } from '../engine/batch-processor.ts';
 import { ALGORITHMS } from '../algorithms/index.ts';
-import type { Algorithm } from '../types/index.ts';
+import type { Algorithm, ImageAdjustments } from '../types/index.ts';
+
+/**
+ * Check if any adjustments are non-default
+ */
+function hasAdjustments(adj: ImageAdjustments): boolean {
+    return adj.brightness !== 0 || adj.contrast !== 0 ||
+           adj.gamma !== 1.0 || (adj.saturation ?? 0) !== 0 ||
+           adj.blackPoint !== 0 || adj.whitePoint !== 255;
+}
 
 /**
  * Show the batch processing dialog
@@ -59,7 +68,10 @@ export function showBatchDialog(): void {
                 <ul>
                     <li>Algorithm: <strong>${algorithmInfo?.name || state.algorithm}</strong></li>
                     <li>Palette: <strong>${state.palette.name}</strong> (${state.palette.colors.length} colors)</li>
+                    <li>Color Match: <strong>${state.colorMatch}</strong></li>
                     ${state.pixelScale > 1 ? `<li>Pixel Scale: <strong>${state.pixelScale}x</strong></li>` : ''}
+                    ${state.levels > 0 ? `<li>Levels: <strong>${state.levels}</strong></li>` : ''}
+                    ${hasAdjustments(state.adjustments) ? `<li>Adjustments: <strong>Applied</strong></li>` : ''}
                 </ul>
             </div>
 

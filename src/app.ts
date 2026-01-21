@@ -98,9 +98,16 @@ class App extends EventTarget {
     /**
      * Update application state with partial updates
      * Dispatches 'statechange' event with changes
+     * @param updates - Partial state updates to apply
+     * @param saveHistory - If true, saves current state to history before updating (for undo)
      */
-    setState(updates: StateUpdate): void {
-        // Store previous state for history
+    setState(updates: StateUpdate, saveHistory = false): void {
+        // Save to history if requested (for undoable actions)
+        if (saveHistory) {
+            this.saveToHistory();
+        }
+
+        // Store previous state for event
         const oldState = { ...this.state };
 
         // Apply updates immutably

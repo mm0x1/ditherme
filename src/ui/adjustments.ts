@@ -88,6 +88,11 @@ export function initAdjustments(container: HTMLElement): void {
         key: keyof ImageAdjustments,
         formatter: (v: number) => string = String
     ): void {
+        // Save history when starting to drag
+        slider.addEventListener('mousedown', () => {
+            app.saveToHistory();
+        });
+        // Update value during drag (no history save)
         slider.addEventListener('input', () => {
             const value = parseFloat(slider.value);
             if (valueElement) {
@@ -120,6 +125,9 @@ export function initAdjustments(container: HTMLElement): void {
     }
 
     if (blackPointSlider) {
+        blackPointSlider.addEventListener('mousedown', () => {
+            app.saveToHistory();
+        });
         blackPointSlider.addEventListener('input', () => {
             const value = parseInt(blackPointSlider.value, 10);
             if (blackPointValue) {
@@ -135,6 +143,9 @@ export function initAdjustments(container: HTMLElement): void {
     }
 
     if (whitePointSlider) {
+        whitePointSlider.addEventListener('mousedown', () => {
+            app.saveToHistory();
+        });
         whitePointSlider.addEventListener('input', () => {
             const value = parseInt(whitePointSlider.value, 10);
             if (whitePointValue) {
@@ -208,6 +219,9 @@ export function initDitherSettings(): void {
 
     // Pixel Scale handler
     if (pixelScaleSlider) {
+        pixelScaleSlider.addEventListener('mousedown', () => {
+            app.saveToHistory();
+        });
         pixelScaleSlider.addEventListener('input', () => {
             const value = parseInt(pixelScaleSlider.value, 10);
             if (pixelScaleValue) {
@@ -219,6 +233,9 @@ export function initDitherSettings(): void {
 
     // Levels handler
     if (levelsSlider) {
+        levelsSlider.addEventListener('mousedown', () => {
+            app.saveToHistory();
+        });
         levelsSlider.addEventListener('input', () => {
             let value = parseInt(levelsSlider.value, 10);
             // Levels of 1 doesn't make sense (need at least 2 colors)

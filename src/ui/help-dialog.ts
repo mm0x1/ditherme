@@ -118,3 +118,69 @@ export function hideHelpDialog(): void {
         dialog.remove();
     }
 }
+
+/**
+ * Show the about dialog
+ */
+export function showAboutDialog(): void {
+    // Remove existing dialog if present
+    const existing = document.querySelector('.about-dialog');
+    if (existing) {
+        existing.remove();
+        return;
+    }
+
+    const modal = document.createElement('div');
+    modal.className = 'modal about-dialog';
+
+    modal.innerHTML = `
+        <div class="modal-content about-content">
+            <div class="help-header">
+                <button class="close-btn" title="Close">&times;</button>
+            </div>
+            <div class="about-body">
+                <div class="about-logo">
+                    <span class="logo-icon">◐</span>
+                    <span class="logo-text">dithertoy</span>
+                </div>
+                <p class="about-version">Version 1.0.0</p>
+                <p class="about-description">
+                    A professional dithering application for creating retro-style
+                    graphics, pixel art, and artistic image effects.
+                </p>
+                <div class="about-features">
+                    <h4>Features</h4>
+                    <ul>
+                        <li>100+ dithering algorithms</li>
+                        <li>WASM-accelerated processing</li>
+                        <li>Video dithering support</li>
+                        <li>Custom color palettes</li>
+                        <li>Batch processing</li>
+                        <li>Real-time preview</li>
+                    </ul>
+                </div>
+                <p class="about-copyright">
+                    &copy; 2024 dithertoy
+                </p>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    // Close handlers
+    const closeBtn = modal.querySelector('.close-btn');
+    closeBtn?.addEventListener('click', () => modal.remove());
+
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) modal.remove();
+    });
+
+    const handleEscape = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') {
+            modal.remove();
+            document.removeEventListener('keydown', handleEscape);
+        }
+    };
+    document.addEventListener('keydown', handleEscape);
+}

@@ -7,6 +7,7 @@ import { app } from './app.ts';
 import { initViewport, initViewControls } from './ui/viewport.ts';
 import { initSidebar } from './ui/sidebar.ts';
 import { initAdjustments, initDitherSettings } from './ui/adjustments.ts';
+import { initPostEffect } from './ui/post-effect.ts';
 import { initPalette } from './ui/palette.ts';
 import { initDragAndDrop, initFileInput, initClipboard, initSaveHandlers, downloadImageWithPreset } from './engine/image.ts';
 import { settings } from './utils/settings.ts';
@@ -108,6 +109,9 @@ function init(): void {
 
         // Initialize dither settings (Pixel Scale, Levels)
         initDitherSettings();
+
+        // Initialize post-processing effect controls
+        initPostEffect(document.body);
 
         // Initialize palette panel
         initPalette(palette);

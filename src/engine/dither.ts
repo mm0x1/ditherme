@@ -1,9 +1,11 @@
 import { app, shouldRedither } from '../app.ts';
 import type { Algorithm, Palette, AlgorithmOptions, ImageAdjustments, ColorMatchMethod, Color } from '../types/index.ts';
+import type { AppState } from '../types/state.ts';
 import { applyAdjustments, hasAdjustments } from './adjustments.ts';
 import { ditherAsync, initDitherWasm } from '../algorithms/index.ts';
 import { getColorDistanceFunction } from './color.ts';
 import { imageCache } from './image-cache.ts';
+import { composite, buildEffectLayers } from './compositor.ts';
 
 /**
  * Debounce timer for dithering
@@ -204,6 +206,26 @@ export async function processImage(
 }
 
 /**
+ * Apply post-processing effect to a dithered result.
+ * Returns result unchanged when postEffect is 'none'.
+ */
+async function applyPostEffect(result: ImageData, state: AppState): Promise<ImageData> {
+    const { postEffect, effectColor, sourceImage } = state;
+    if (postEffect === 'none' || !sourceImage) return result;
+
+    let brightDither: ImageData | null = null;
+    if (postEffect === 'luminous-pin-light') {
+        brightDither = await processImage(
+            sourceImage, state.algorithm, state.palette, state.layer2Adjustments,
+            state.options, state.colorMatch, state.pixelScale, state.levels
+        );
+    }
+
+    const layers = buildEffectLayers(postEffect, sourceImage, result, effectColor, brightDither);
+    return layers ? composite(layers) : result;
+}
+
+/**
  * Trigger dithering based on current state (debounced)
  */
 export function triggerDither(): void {
@@ -246,11 +268,13 @@ export function triggerDither(): void {
                 state.levels
             );
 
+            const finalImage = await applyPostEffect(result, state);
+
             // Cache the result
-            imageCache.set(state, result);
+            imageCache.set(state, finalImage);
 
             app.setState({
-                ditheredImage: result,
+                ditheredImage: finalImage,
                 isProcessing: false
             });
         } catch (error) {
@@ -314,8 +338,10 @@ export async function forceDither(): Promise<void> {
             state.levels
         );
 
+        const finalImage = await applyPostEffect(result, state);
+
         app.setState({
-            ditheredImage: result,
+            ditheredImage: finalImage,
             isProcessing: false
         });
     } catch (error) {

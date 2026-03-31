@@ -2,6 +2,7 @@ import type { Algorithm } from './algorithms.ts';
 import type { AlgorithmOptions } from './options.ts';
 import type { Palette, ColorMatchMethod, QuantizationMethod } from './palette.ts';
 import type { VideoMetadata } from './video.ts';
+import type { PostEffect } from './post-effect.ts';
 
 /**
  * Image adjustment parameters
@@ -61,6 +62,11 @@ export interface AppState {
     panX: number;
     panY: number;
     showOriginal: boolean;
+
+    // Post-Processing Effects
+    postEffect: PostEffect;
+    effectColor: string;  // hex, always '#rrggbb' format
+    layer2Adjustments: ImageAdjustments;  // independent adjustments for the pin light dither pass (luminous-pin-light)
 
     // Processing
     isProcessing: boolean;

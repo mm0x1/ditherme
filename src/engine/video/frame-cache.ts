@@ -209,6 +209,11 @@ export function computeSettingsHash(state: AppState): string {
         pixelScale: state.pixelScale,
         levels: state.levels,
         mode: state.mode,
+        postEffect: state.postEffect,
+        effectColor: (state.postEffect === 'duotone-pin-cutout' ||
+                      state.postEffect === 'chroma-pin-composite')
+                     ? state.effectColor : null,
+        layer2Adjustments: state.postEffect === 'luminous-pin-light' ? state.layer2Adjustments : null,
     };
 
     // Simple hash using JSON string

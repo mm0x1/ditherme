@@ -5,9 +5,11 @@
 
 import * as Comlink from 'comlink';
 import type { Algorithm, Palette, AlgorithmOptions, ImageAdjustments, ColorMatchMethod } from '../types/index.ts';
+import type { PostEffect } from '../types/post-effect.ts';
 import { applyAdjustments, hasAdjustments } from '../engine/adjustments.ts';
 import { ditherAsync, initDitherWasm } from '../algorithms/index.ts';
 import { getColorDistanceFunction } from '../engine/color.ts';
+import { composite, buildEffectLayers } from '../engine/compositor.ts';
 import type { Color } from '../types/palette.ts';
 
 /**
@@ -21,6 +23,9 @@ export interface FrameDitherSettings {
     colorMatchMethod: ColorMatchMethod;
     pixelScale: number;
     levels: number;
+    postEffect: PostEffect;
+    effectColor: string;
+    layer2Adjustments: ImageAdjustments;
 }
 
 /**
@@ -191,7 +196,10 @@ class VideoProcessor implements VideoProcessorAPI {
             options,
             colorMatchMethod,
             pixelScale,
-            levels
+            levels,
+            postEffect,
+            effectColor,
+            layer2Adjustments
         } = settings;
 
         const originalWidth = sourceImage.width;
@@ -220,6 +228,30 @@ class VideoProcessor implements VideoProcessorAPI {
         // Step 5: Upscale back to original size if we downscaled
         if (pixelScale > 1) {
             result = upscaleImage(result, originalWidth, originalHeight);
+        }
+
+        // Step 6: Apply post-processing effect
+        if (postEffect !== 'none') {
+            let brightDither: ImageData | null = null;
+            if (postEffect === 'luminous-pin-light') {
+                let brightProcessed = sourceImage;
+                if (hasAdjustments(layer2Adjustments)) {
+                    brightProcessed = applyAdjustments(sourceImage, layer2Adjustments);
+                }
+                if (pixelScale > 1) {
+                    brightProcessed = downscaleImage(brightProcessed, pixelScale);
+                }
+                let brightResult = await ditherAsync(brightProcessed, algorithm, workingPalette, options, colorMatchMethod);
+                if (pixelScale > 1) {
+                    brightResult = upscaleImage(brightResult, originalWidth, originalHeight);
+                }
+                brightDither = brightResult;
+            }
+
+            const layers = buildEffectLayers(postEffect, sourceImage, result, effectColor, brightDither);
+            if (layers) {
+                result = await composite(layers);
+            }
         }
 
         return result;

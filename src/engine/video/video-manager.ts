@@ -157,6 +157,9 @@ export class VideoManager {
             colorMatchMethod: state.colorMatch,
             pixelScale: state.pixelScale,
             levels: state.levels,
+            postEffect: state.postEffect,
+            effectColor: state.effectColor,
+            layer2Adjustments: state.layer2Adjustments,
         };
 
         // Process frame in worker

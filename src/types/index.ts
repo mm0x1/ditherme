@@ -7,3 +7,4 @@ export * from './options.ts';
 export * from './state.ts';
 export * from './events.ts';
 export * from './settings.ts';
+export * from './post-effect.ts';

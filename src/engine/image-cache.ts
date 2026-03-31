@@ -48,6 +48,11 @@ class ImageCache {
             // (actual pixel data would be too expensive to hash)
             sourceWidth: state.sourceImage?.width ?? 0,
             sourceHeight: state.sourceImage?.height ?? 0,
+            postEffect: state.postEffect,
+            effectColor: (state.postEffect === 'duotone-pin-cutout' ||
+                          state.postEffect === 'chroma-pin-composite')
+                         ? state.effectColor : null,
+            layer2Adjustments: state.postEffect === 'luminous-pin-light' ? state.layer2Adjustments : null,
         };
 
         return this.hashObject(keyData);

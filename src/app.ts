@@ -64,6 +64,18 @@ const initialState: AppState = {
     panY: 0,
     showOriginal: false,
 
+    // Post-Processing Effects
+    postEffect: 'none',
+    effectColor: '#ff6600',
+    layer2Adjustments: {
+        brightness: 0,
+        contrast: 0,
+        gamma: 1.0,
+        saturation: 0,
+        blackPoint: 0,
+        whitePoint: 255
+    },
+
     // Processing
     isProcessing: false,
     processingProgress: 0
@@ -314,7 +326,10 @@ export function shouldRedither(changes: StateUpdate): boolean {
         'mode',
         'colorMatch',
         'pixelScale',
-        'levels'
+        'levels',
+        'postEffect',
+        'effectColor',
+        'layer2Adjustments'
     ];
 
     return ditherTriggers.some(key => key in changes);
@@ -351,7 +366,10 @@ export function shouldInvalidateVideoCache(changes: StateUpdate): boolean {
         'adjustments',
         'pixelScale',
         'levels',
-        'mode'
+        'mode',
+        'postEffect',
+        'effectColor',
+        'layer2Adjustments'
     ];
 
     return cacheTriggers.some(key => key in changes);

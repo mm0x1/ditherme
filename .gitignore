@@ -5,3 +5,4 @@ release/
 dist-electron/
 *.tsbuildinfo
 build/
+.ai/

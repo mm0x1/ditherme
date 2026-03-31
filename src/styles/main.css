@@ -564,7 +564,105 @@ body {
     padding: var(--spacing-md);
 }
 
+.panel-subheader {
+    font-size: var(--font-size-xs);
+    font-weight: 500;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin: var(--spacing-md) 0 var(--spacing-sm);
+    padding-top: var(--spacing-sm);
+    border-top: 1px solid var(--border-color);
+}
+
 /* Form Controls */
+.control-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-sm);
+}
+
+.control-row label {
+    font-size: var(--font-size-xs);
+    color: var(--text-secondary);
+    flex-shrink: 0;
+}
+
+.control-row select,
+.control-row input[type="text"] {
+    flex: 1;
+    min-width: 0;
+}
+
+/* Effect select + info icon */
+.effect-select-wrap {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    flex: 1;
+    min-width: 0;
+}
+
+.effect-select-wrap select {
+    flex: 1;
+    min-width: 0;
+}
+
+.effect-tooltip-anchor {
+    position: relative;
+    flex-shrink: 0;
+}
+
+.effect-info-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: var(--font-size-xs);
+    color: var(--text-secondary);
+    padding: 0 2px;
+    line-height: 1;
+    opacity: 0.7;
+}
+
+.effect-info-btn:hover {
+    opacity: 1;
+    color: var(--text-primary);
+}
+
+.effect-tooltip {
+    display: none;
+    position: absolute;
+    right: 0;
+    top: calc(100% + 4px);
+    width: 220px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm, 4px);
+    padding: var(--spacing-sm) var(--spacing-md);
+    z-index: 100;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    pointer-events: auto;
+}
+
+.effect-tooltip-desc {
+    display: block;
+    font-size: var(--font-size-xs);
+    color: var(--text-primary);
+    line-height: 1.5;
+    margin-bottom: var(--spacing-sm);
+}
+
+.effect-tooltip-ps {
+    display: block;
+    font-size: var(--font-size-xs);
+    color: var(--text-secondary);
+    line-height: 1.5;
+    font-family: monospace;
+    white-space: pre-line;
+}
+
 .form-group {
     margin-bottom: var(--spacing-md);
 }

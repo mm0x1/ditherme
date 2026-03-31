@@ -2,6 +2,9 @@
  * User settings and preferences
  */
 
+import type { PostEffect } from './post-effect.ts';
+import type { ImageAdjustments } from './state.ts';
+
 /**
  * Export preset configuration
  */
@@ -48,6 +51,11 @@ export interface UserSettings {
     apiBindAddress: string;
     apiAuthEnabled: boolean;
     apiAuthToken: string | null;
+
+    // Post-Processing
+    postEffect: PostEffect;
+    effectColor: string;
+    layer2Adjustments: ImageAdjustments;
 }
 
 /**
@@ -84,4 +92,9 @@ export const DEFAULT_SETTINGS: UserSettings = {
     apiBindAddress: '127.0.0.1',
     apiAuthEnabled: false,
     apiAuthToken: null,
+
+    // Post-Processing defaults
+    postEffect: 'none',
+    effectColor: '#ff6600',
+    layer2Adjustments: { brightness: 0, contrast: 0, gamma: 1.0, saturation: 0, blackPoint: 0, whitePoint: 255 },
 };

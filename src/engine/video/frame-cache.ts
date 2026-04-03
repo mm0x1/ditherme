@@ -214,6 +214,8 @@ export function computeSettingsHash(state: AppState): string {
                       state.postEffect === 'chroma-pin-composite')
                      ? state.effectColor : null,
         layer2Adjustments: state.postEffect === 'luminous-pin-light' ? state.layer2Adjustments : null,
+        imageEffect: state.imageEffect,
+        imageEffectParams: state.imageEffect !== 'none' ? state.imageEffectParams : null,
     };
 
     // Simple hash using JSON string

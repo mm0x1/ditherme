@@ -8,6 +8,7 @@ import { initViewport, initViewControls } from './ui/viewport.ts';
 import { initSidebar } from './ui/sidebar.ts';
 import { initAdjustments, initDitherSettings } from './ui/adjustments.ts';
 import { initPostEffect } from './ui/post-effect.ts';
+import { initImageEffect } from './ui/image-effect.ts';
 import { initPalette } from './ui/palette.ts';
 import { initDragAndDrop, initFileInput, initClipboard, initSaveHandlers, downloadImageWithPreset } from './engine/image.ts';
 import { settings } from './utils/settings.ts';
@@ -112,6 +113,9 @@ function init(): void {
 
         // Initialize post-processing effect controls
         initPostEffect(document.body);
+
+        // Initialize image effect controls
+        initImageEffect(document.body);
 
         // Initialize palette panel
         initPalette(palette);

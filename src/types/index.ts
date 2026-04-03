@@ -8,3 +8,4 @@ export * from './state.ts';
 export * from './events.ts';
 export * from './settings.ts';
 export * from './post-effect.ts';
+export * from './image-effect.ts';

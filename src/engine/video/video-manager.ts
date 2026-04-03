@@ -160,6 +160,8 @@ export class VideoManager {
             postEffect: state.postEffect,
             effectColor: state.effectColor,
             layer2Adjustments: state.layer2Adjustments,
+            imageEffect: state.imageEffect,
+            imageEffectParams: state.imageEffectParams,
         };
 
         // Process frame in worker

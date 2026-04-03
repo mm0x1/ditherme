@@ -4,6 +4,7 @@
 
 import type { PostEffect } from './post-effect.ts';
 import type { ImageAdjustments } from './state.ts';
+import type { ImageEffect, ImageEffectParams } from './image-effect.ts';
 
 /**
  * Export preset configuration
@@ -56,6 +57,10 @@ export interface UserSettings {
     postEffect: PostEffect;
     effectColor: string;
     layer2Adjustments: ImageAdjustments;
+
+    // Image Effects
+    imageEffect: ImageEffect;
+    imageEffectParams: ImageEffectParams;
 }
 
 /**
@@ -97,4 +102,8 @@ export const DEFAULT_SETTINGS: UserSettings = {
     postEffect: 'none',
     effectColor: '#ff6600',
     layer2Adjustments: { brightness: 0, contrast: 0, gamma: 1.0, saturation: 0, blackPoint: 0, whitePoint: 255 },
+
+    // Image Effects defaults
+    imageEffect: 'none',
+    imageEffectParams: { intensity: 50, radius: 10, color: '#ff4400', amount: 3, threshold: 100 },
 };

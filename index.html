@@ -270,6 +270,59 @@
                     </div>
                 </section>
 
+                <!-- Image Effects -->
+                <section id="image-effect-section" class="panel">
+                    <div class="panel-header">
+                        <h3>Image Effects</h3>
+                    </div>
+                    <div class="panel-content">
+                        <div class="control-row">
+                            <label for="image-effect-select">Effect</label>
+                            <select id="image-effect-select"></select>
+                        </div>
+                        <div class="control-row" id="ie-intensity-row" style="display: none;">
+                            <div class="slider-group" style="width:100%;">
+                                <label>
+                                    <span class="slider-label">Intensity</span>
+                                    <span class="slider-value" id="ie-intensity-value">50</span>
+                                </label>
+                                <input type="range" id="ie-intensity" min="0" max="100" value="50" step="1">
+                            </div>
+                        </div>
+                        <div class="control-row" id="ie-threshold-row" style="display: none;">
+                            <div class="slider-group" style="width:100%;">
+                                <label>
+                                    <span class="slider-label">Threshold</span>
+                                    <span class="slider-value" id="ie-threshold-value">100</span>
+                                </label>
+                                <input type="range" id="ie-threshold" min="0" max="255" value="100" step="1">
+                            </div>
+                        </div>
+                        <div class="control-row" id="ie-radius-row" style="display: none;">
+                            <div class="slider-group" style="width:100%;">
+                                <label>
+                                    <span class="slider-label">Radius</span>
+                                    <span class="slider-value" id="ie-radius-value">10</span>
+                                </label>
+                                <input type="range" id="ie-radius" min="2" max="60" value="10" step="1">
+                            </div>
+                        </div>
+                        <div class="control-row" id="ie-color-row" style="display: none;">
+                            <label for="ie-color-input">Color</label>
+                            <input type="text" id="ie-color-input" data-coloris value="#ff4400" autocomplete="off" />
+                        </div>
+                        <div class="control-row" id="ie-amount-row" style="display: none;">
+                            <div class="slider-group" style="width:100%;">
+                                <label>
+                                    <span class="slider-label">Amount</span>
+                                    <span class="slider-value" id="ie-amount-value">3</span>
+                                </label>
+                                <input type="range" id="ie-amount" min="1" max="20" value="3" step="1">
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
                 <!-- Palette -->
                 <section id="palette" class="panel palette-panel">
                     <div class="panel-header">

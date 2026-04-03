@@ -6,6 +6,8 @@
 import * as Comlink from 'comlink';
 import type { Algorithm, Palette, AlgorithmOptions, ImageAdjustments, ColorMatchMethod } from '../types/index.ts';
 import type { PostEffect } from '../types/post-effect.ts';
+import type { ImageEffect, ImageEffectParams } from '../types/image-effect.ts';
+import { applyImageEffect } from '../engine/image-effects/index.ts';
 import { applyAdjustments, hasAdjustments } from '../engine/adjustments.ts';
 import { ditherAsync, initDitherWasm } from '../algorithms/index.ts';
 import { getColorDistanceFunction } from '../engine/color.ts';
@@ -26,6 +28,8 @@ export interface FrameDitherSettings {
     postEffect: PostEffect;
     effectColor: string;
     layer2Adjustments: ImageAdjustments;
+    imageEffect: ImageEffect;
+    imageEffectParams: ImageEffectParams;
 }
 
 /**
@@ -199,7 +203,9 @@ class VideoProcessor implements VideoProcessorAPI {
             levels,
             postEffect,
             effectColor,
-            layer2Adjustments
+            layer2Adjustments,
+            imageEffect,
+            imageEffectParams
         } = settings;
 
         const originalWidth = sourceImage.width;
@@ -253,6 +259,9 @@ class VideoProcessor implements VideoProcessorAPI {
                 result = await composite(layers);
             }
         }
+
+        // Step 7: Apply image effect
+        result = await applyImageEffect(result, imageEffect, imageEffectParams);
 
         return result;
     }

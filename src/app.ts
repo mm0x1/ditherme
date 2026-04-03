@@ -6,6 +6,7 @@ import type {
     AlgorithmOptions,
     DitherMode
 } from './types/index.ts';
+import { DEFAULT_IMAGE_EFFECT_PARAMS } from './types/image-effect.ts';
 import type { AppEventMap, AppEventListener } from './types/events.ts';
 import { createAppEvent } from './types/events.ts';
 
@@ -75,6 +76,10 @@ const initialState: AppState = {
         blackPoint: 0,
         whitePoint: 255
     },
+
+    // Image Effects
+    imageEffect: 'none',
+    imageEffectParams: { ...DEFAULT_IMAGE_EFFECT_PARAMS },
 
     // Processing
     isProcessing: false,
@@ -329,7 +334,9 @@ export function shouldRedither(changes: StateUpdate): boolean {
         'levels',
         'postEffect',
         'effectColor',
-        'layer2Adjustments'
+        'layer2Adjustments',
+        'imageEffect',
+        'imageEffectParams'
     ];
 
     return ditherTriggers.some(key => key in changes);
@@ -369,7 +376,9 @@ export function shouldInvalidateVideoCache(changes: StateUpdate): boolean {
         'mode',
         'postEffect',
         'effectColor',
-        'layer2Adjustments'
+        'layer2Adjustments',
+        'imageEffect',
+        'imageEffectParams'
     ];
 
     return cacheTriggers.some(key => key in changes);

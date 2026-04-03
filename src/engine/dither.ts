@@ -6,6 +6,7 @@ import { ditherAsync, initDitherWasm } from '../algorithms/index.ts';
 import { getColorDistanceFunction } from './color.ts';
 import { imageCache } from './image-cache.ts';
 import { composite, buildEffectLayers } from './compositor.ts';
+import { applyImageEffect } from './image-effects/index.ts';
 
 /**
  * Debounce timer for dithering
@@ -268,7 +269,8 @@ export function triggerDither(): void {
                 state.levels
             );
 
-            const finalImage = await applyPostEffect(result, state);
+            const postProcessed = await applyPostEffect(result, state);
+            const finalImage = await applyImageEffect(postProcessed, state.imageEffect, state.imageEffectParams);
 
             // Cache the result
             imageCache.set(state, finalImage);
@@ -338,7 +340,8 @@ export async function forceDither(): Promise<void> {
             state.levels
         );
 
-        const finalImage = await applyPostEffect(result, state);
+        const postProcessed = await applyPostEffect(result, state);
+        const finalImage = await applyImageEffect(postProcessed, state.imageEffect, state.imageEffectParams);
 
         app.setState({
             ditheredImage: finalImage,

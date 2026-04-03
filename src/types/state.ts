@@ -3,6 +3,7 @@ import type { AlgorithmOptions } from './options.ts';
 import type { Palette, ColorMatchMethod, QuantizationMethod } from './palette.ts';
 import type { VideoMetadata } from './video.ts';
 import type { PostEffect } from './post-effect.ts';
+import type { ImageEffect, ImageEffectParams } from './image-effect.ts';
 
 /**
  * Image adjustment parameters
@@ -67,6 +68,10 @@ export interface AppState {
     postEffect: PostEffect;
     effectColor: string;  // hex, always '#rrggbb' format
     layer2Adjustments: ImageAdjustments;  // independent adjustments for the pin light dither pass (luminous-pin-light)
+
+    // Image Effects (applied after post-processing compositing)
+    imageEffect: ImageEffect;
+    imageEffectParams: ImageEffectParams;
 
     // Processing
     isProcessing: boolean;

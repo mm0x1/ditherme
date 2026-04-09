@@ -29,6 +29,9 @@ export function initPalette(container: HTMLElement): void {
     const deleteSavedPaletteBtn = container.querySelector<HTMLButtonElement>('#delete-saved-palette-btn');
 
     let _currentSource = 'builtin';
+    let _dragFromIndex: number = -1;
+    let _dragDidMove: boolean = false;
+    let _dragOverIndex: number = -1;
 
     /**
      * Render color swatches
@@ -36,28 +39,29 @@ export function initPalette(container: HTMLElement): void {
     function renderSwatches(): void {
         if (!paletteSwatches) return;
 
+        // Null out stale color picker handler before destroying DOM
+        const colorisInput = document.getElementById('coloris-input') as HTMLInputElement | null;
+        if (colorisInput) colorisInput.oninput = null;
+
         const state = app.getState();
         const { colors } = state.palette;
+        const isCustom = _currentSource === 'custom';
 
         const html = colors.map((color, index) => {
             const hex = colorToHex(color);
-            return `<div class="color-swatch editable" data-index="${index}" style="background-color: ${hex};" title="${hex}"></div>`;
+            if (isCustom) {
+                return `<div class="color-swatch editable" data-index="${index}" draggable="true" style="background-color: ${hex};" title="${hex}">` +
+                       `<button class="swatch-delete-btn" data-index="${index}" title="Remove color" aria-label="Remove color ${hex}" tabindex="-1">\u00d7</button>` +
+                       `</div>`;
+            }
+            return `<div class="color-swatch" data-index="${index}" style="background-color: ${hex};" title="${hex}"></div>`;
         }).join('');
 
         paletteSwatches.innerHTML = html;
 
-        // Update color count
-        if (colorCountSpan) {
-            colorCountSpan.textContent = String(colors.length);
-        }
-
-        // Update button states
-        if (addColorBtn) {
-            addColorBtn.disabled = colors.length >= MAX_CUSTOM_COLORS;
-        }
-        if (removeColorBtn) {
-            removeColorBtn.disabled = colors.length <= MIN_CUSTOM_COLORS;
-        }
+        if (colorCountSpan) colorCountSpan.textContent = String(colors.length);
+        if (addColorBtn) addColorBtn.disabled = colors.length >= MAX_CUSTOM_COLORS;
+        if (removeColorBtn) removeColorBtn.disabled = colors.length <= MIN_CUSTOM_COLORS;
     }
 
     /**
@@ -272,14 +276,109 @@ export function initPalette(container: HTMLElement): void {
         });
     }
 
-    // Swatch click (for editing colors)
+    // Swatch click (for editing colors or deleting)
     if (paletteSwatches) {
         paletteSwatches.addEventListener('click', (e: MouseEvent) => {
-            const target = e.target as HTMLElement;
-            if (target.classList.contains('color-swatch')) {
-                const index = parseInt(target.dataset.index || '0', 10);
-                openColorPicker(index, target);
+            // Suppress click that fires after a completed drag
+            if (_dragDidMove) {
+                _dragDidMove = false;
+                return;
             }
+
+            const target = e.target as HTMLElement;
+
+            // Delete button
+            if (target.classList.contains('swatch-delete-btn')) {
+                e.stopPropagation();
+                if (_currentSource !== 'custom') return;
+                const index = parseInt(target.dataset.index || '-1', 10);
+                if (index < 0) return;
+                const state = app.getState();
+                const colors = state.palette.colors;
+                if (colors.length <= MIN_CUSTOM_COLORS) return;
+                const newColors = [...colors];
+                newColors.splice(index, 1);
+                const newPalette: Palette = { name: 'Custom', colors: newColors };
+                app.setState({ palette: newPalette, customPalette: newPalette }, true);
+                return;
+            }
+
+            // Color picker open
+            const swatch = target.closest<HTMLElement>('.color-swatch');
+            if (swatch && _currentSource === 'custom') {
+                const index = parseInt(swatch.dataset.index || '0', 10);
+                openColorPicker(index, swatch);
+            }
+        });
+
+        // Drag: record source index
+        paletteSwatches.addEventListener('dragstart', (e: DragEvent) => {
+            if (_currentSource !== 'custom') { e.preventDefault(); return; }
+            const swatch = (e.target as HTMLElement).closest<HTMLElement>('.color-swatch');
+            if (!swatch) { e.preventDefault(); return; }
+            _dragFromIndex = parseInt(swatch.dataset.index || '-1', 10);
+            if (_dragFromIndex < 0) { e.preventDefault(); return; }
+            _dragDidMove = true;
+            e.dataTransfer!.setData('text/plain', String(_dragFromIndex)); // required for Firefox
+            e.dataTransfer!.effectAllowed = 'move';
+            // Apply dragging style after a tick so drag ghost captures full opacity
+            requestAnimationFrame(() => swatch.classList.add('swatch-dragging'));
+        });
+
+        // Drag: provide drop target feedback
+        paletteSwatches.addEventListener('dragover', (e: DragEvent) => {
+            e.preventDefault();
+            if (_currentSource !== 'custom' || _dragFromIndex < 0) return;
+            e.dataTransfer!.dropEffect = 'move';
+            const swatch = (e.target as HTMLElement).closest<HTMLElement>('.color-swatch');
+            if (!swatch) return;
+            const overIndex = parseInt(swatch.dataset.index || '-1', 10);
+            if (overIndex < 0 || overIndex === _dragOverIndex) return;
+            paletteSwatches.querySelectorAll<HTMLElement>('.drag-over').forEach(el => el.classList.remove('drag-over'));
+            _dragOverIndex = overIndex;
+            swatch.classList.add('drag-over');
+        });
+
+        // Drag: clear drop indicator only when truly leaving the container
+        paletteSwatches.addEventListener('dragleave', (e: DragEvent) => {
+            if (!paletteSwatches.contains(e.relatedTarget as Node | null)) {
+                paletteSwatches.querySelectorAll<HTMLElement>('.drag-over').forEach(el => el.classList.remove('drag-over'));
+                _dragOverIndex = -1;
+            }
+        });
+
+        // Drag: perform reorder on drop
+        paletteSwatches.addEventListener('drop', (e: DragEvent) => {
+            e.preventDefault();
+            // Clean up visual state unconditionally
+            paletteSwatches.querySelectorAll<HTMLElement>('.drag-over, .swatch-dragging')
+                .forEach(el => { el.classList.remove('drag-over'); el.classList.remove('swatch-dragging'); });
+            _dragOverIndex = -1;
+
+            if (_currentSource !== 'custom' || _dragFromIndex < 0) { _dragFromIndex = -1; return; }
+
+            const swatch = (e.target as HTMLElement).closest<HTMLElement>('.color-swatch');
+            const toIndex = swatch ? parseInt(swatch.dataset.index || '-1', 10) : -1;
+
+            const from = _dragFromIndex;
+            _dragFromIndex = -1;
+
+            if (toIndex < 0 || toIndex === from) return;
+
+            const state = app.getState();
+            const newColors = reorderColors(state.palette.colors, from, toIndex);
+            const newPalette: Palette = { name: 'Custom', colors: newColors };
+            app.setState({ palette: newPalette, customPalette: newPalette }, true);
+        });
+
+        // Drag: always clean up (fires even if drop was outside the container)
+        paletteSwatches.addEventListener('dragend', () => {
+            paletteSwatches.querySelectorAll<HTMLElement>('.drag-over, .swatch-dragging')
+                .forEach(el => { el.classList.remove('drag-over'); el.classList.remove('swatch-dragging'); });
+            _dragOverIndex = -1;
+            _dragFromIndex = -1;
+            // _dragDidMove intentionally NOT cleared here — the click event fires after dragend
+            // and the click handler clears it, suppressing spurious color picker open after drag.
         });
     }
 
@@ -362,6 +461,18 @@ export function initPalette(container: HTMLElement): void {
     // Initial update
     updateFromState();
     renderSavedPalettes();
+}
+
+/**
+ * Reorder colors array by moving the element at `from` to `to` (shift-insert semantics).
+ * Returns the original array unchanged when from === to.
+ */
+function reorderColors(colors: Color[], from: number, to: number): Color[] {
+    if (from === to) return colors;
+    const newColors = [...colors];
+    const [removed] = newColors.splice(from, 1);
+    newColors.splice(to, 0, removed);
+    return newColors;
 }
 
 /**

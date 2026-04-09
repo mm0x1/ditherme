@@ -800,6 +800,52 @@ input[type="range"]:focus {
     background: rgba(255, 255, 255, 0.2);
 }
 
+/* Per-swatch delete button */
+.swatch-delete-btn {
+    display: none;
+    position: absolute;
+    top: 1px;
+    right: 1px;
+    width: 14px;
+    height: 14px;
+    padding: 0;
+    line-height: 1;
+    font-size: 10px;
+    background: rgba(0, 0, 0, 0.7);
+    color: #fff;
+    border: none;
+    border-radius: 2px;
+    cursor: pointer;
+    z-index: 2;
+    align-items: center;
+    justify-content: center;
+}
+
+.color-swatch.editable:hover .swatch-delete-btn {
+    display: flex;
+}
+
+.swatch-delete-btn:hover {
+    background: var(--error);
+}
+
+/* Drag states */
+.color-swatch.swatch-dragging {
+    opacity: 0.4;
+    cursor: grabbing;
+}
+
+.color-swatch.drag-over {
+    outline: 2px solid var(--accent-primary);
+    outline-offset: 1px;
+    z-index: 2;
+}
+
+/* Suppress hover scale during drag to prevent layout jitter */
+.palette-swatches:has(.swatch-dragging) .color-swatch:hover {
+    transform: none;
+}
+
 /* View Controls */
 .view-controls {
     display: flex;

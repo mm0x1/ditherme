@@ -36,10 +36,7 @@ class ImageCache {
             options: state.options,
             mode: state.mode,
             paletteName: state.palette.name,
-            paletteColorsCount: state.palette.colors.length,
-            // Include first/last palette colors to detect changes
-            paletteFirst: state.palette.colors[0],
-            paletteLast: state.palette.colors[state.palette.colors.length - 1],
+            paletteColors: state.palette.colors,
             colorMatch: state.colorMatch,
             adjustments: state.adjustments,
             pixelScale: state.pixelScale,

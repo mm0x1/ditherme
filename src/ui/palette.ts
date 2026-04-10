@@ -39,10 +39,6 @@ export function initPalette(container: HTMLElement): void {
     function renderSwatches(): void {
         if (!paletteSwatches) return;
 
-        // Null out stale color picker handler before destroying DOM
-        const colorisInput = document.getElementById('coloris-input') as HTMLInputElement | null;
-        if (colorisInput) colorisInput.oninput = null;
-
         const state = app.getState();
         const { colors } = state.palette;
         const isCustom = _currentSource === 'custom';

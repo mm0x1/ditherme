@@ -93,6 +93,7 @@ export class WebCodecsEncoderWrapper implements VideoEncoderWrapper {
     private frameIndex = 0;
     private aborted = false;
     private encodingError: Error | null = null;
+    private _useQuantizer = false;
 
     async configure(options: VideoExportOptions, metadata: VideoMetadata): Promise<void> {
         this.options = options;
@@ -101,12 +102,19 @@ export class WebCodecsEncoderWrapper implements VideoEncoderWrapper {
         this.aborted = false;
         this.encodingError = null;
 
+        const width = options.width ?? metadata.width;
+        const height = options.height ?? metadata.height;
+
         // Determine codec based on format
         // H.264 High profile (0x64=High, 0x00=no constraints, 0x1E=level 3.0)
         // for CABAC entropy coding and 8x8 transforms — much better quality than Baseline
-        const codec = options.format === 'webm' ? 'vp09.00.10.08' : 'avc1.64001E';
-        const width = options.width ?? metadata.width;
-        const height = options.height ?? metadata.height;
+        // VP9 Profile 0, 8-bit, level computed from resolution:
+        //   Level 3.1 (31) supports up to 1280x720 (983,040 samples)
+        //   Level 4.0 (40) supports up to 2048x1080 (2,228,224 samples)
+        const vp9Level = this.getVP9Level(width, height, options.frameRate);
+        const codec = options.format === 'webm'
+            ? `vp09.00.${vp9Level}.08`
+            : 'avc1.64001E';
 
         // Create the appropriate muxer
         if (options.format === 'webm') {
@@ -154,38 +162,110 @@ export class WebCodecsEncoderWrapper implements VideoEncoderWrapper {
             },
         });
 
-        const bitrate = this.calculateBitrate(width, height, options.quality);
-        const config: VideoEncoderConfig = {
+        // Try quantizer mode first (quality-adaptive), fall back to bitrate mode
+        const qp = this.qualityToQuantizer(options.quality);
+        let useQuantizer = false;
+
+        const quantizerConfig: VideoEncoderConfig = {
             codec,
             width,
             height,
-            bitrate,
+            bitrateMode: 'quantizer',
             framerate: options.frameRate,
             latencyMode: 'realtime',
         };
 
-        console.log(`[Encoder] Config: codec=${codec}, ${width}x${height}, bitrate=${(bitrate/1_000_000).toFixed(2)}Mbps, fps=${options.frameRate}, quality=${options.quality}`);
-
-        // Check if codec is supported
-        const support = await VideoEncoder.isConfigSupported(config);
-        if (!support.supported) {
-            throw new Error(`Codec ${codec} not supported`);
+        try {
+            const support = await VideoEncoder.isConfigSupported(quantizerConfig);
+            if (support.supported) {
+                useQuantizer = true;
+            }
+        } catch {
+            // quantizer mode not supported by this browser
         }
 
-        this.encoder.configure(config);
+        if (useQuantizer) {
+            console.log(`[Encoder] Config: codec=${codec}, ${width}x${height}, bitrateMode=quantizer, qp=${qp}, fps=${options.frameRate}, quality=${options.quality}`);
+            this.encoder.configure(quantizerConfig);
+        } else {
+            // Fallback: high bitrate VBR mode
+            const bitrate = this.calculateFallbackBitrate(width, height, options.quality);
+            const config: VideoEncoderConfig = {
+                codec,
+                width,
+                height,
+                bitrate,
+                framerate: options.frameRate,
+                latencyMode: 'realtime',
+            };
+
+            const support = await VideoEncoder.isConfigSupported(config);
+            if (!support.supported) {
+                throw new Error(`Codec ${codec} not supported`);
+            }
+
+            console.log(`[Encoder] Config (fallback): codec=${codec}, ${width}x${height}, bitrate=${(bitrate/1_000_000).toFixed(2)}Mbps, fps=${options.frameRate}, quality=${options.quality}`);
+            this.encoder.configure(config);
+        }
+
+        this._useQuantizer = useQuantizer;
     }
 
-    private calculateBitrate(width: number, height: number, quality: number): number {
-        // Dithered content has high-frequency spatial detail (dot patterns) that
-        // H.264 struggles to compress — needs significantly more bitrate than
-        // natural video to avoid quality degradation between keyframes.
-        // At quality=100: ~24 Mbps for 1080p, ~10.5 Mbps for 720p
-        // At quality=50:  ~12 Mbps for 1080p, ~5.25 Mbps for 720p
+    /**
+     * Map UI quality (0-100) to codec-native quantizer parameter.
+     * Lower QP = higher quality = larger file.
+     * H.264 QP range: 0-51; VP9 QP range: 0-63 (effective).
+     */
+    private qualityToQuantizer(quality: number): number {
+        if (this.options?.format === 'webm') {
+            // VP9: QP 0-63, lower = better
+            // quality 100 → QP 10 (near-lossless), quality 0 → QP 55
+            return Math.round(55 - (quality / 100) * 45);
+        }
+        // H.264: QP 0-51, lower = better
+        // quality 100 → QP 10 (near-lossless), quality 0 → QP 48
+        return Math.round(48 - (quality / 100) * 38);
+    }
+
+    /**
+     * Fallback bitrate calculation when quantizer mode is not supported.
+     * Uses generous bitrate for dithered content.
+     */
+    private calculateFallbackBitrate(width: number, height: number, quality: number): number {
         const pixels = width * height;
         const referencePixels = 1920 * 1080;
         const baseBitrate = 24_000_000 * (pixels / referencePixels);
-        const qualityMultiplier = 0.5 + (quality / 100) * 0.5; // 0.5x at q=0, 1.0x at q=100
+        const qualityMultiplier = 0.5 + (quality / 100) * 0.5;
         return Math.round(Math.max(2_000_000, baseBitrate * qualityMultiplier));
+    }
+
+    /**
+     * Determine VP9 level based on resolution and frame rate.
+     * Returns a two-digit string for the codec string (e.g., "31" for Level 3.1).
+     */
+    private getVP9Level(width: number, height: number, fps: number): string {
+        const samples = width * height;
+        const sampleRate = samples * fps;
+
+        // VP9 levels: [level string, max samples/frame, max samples/sec]
+        const levels: [string, number, number][] = [
+            ['10', 36_864, 829_440],
+            ['20', 245_760, 3_686_400],
+            ['21', 245_760, 7_372_800],
+            ['30', 552_960, 18_432_000],
+            ['31', 983_040, 36_864_000],
+            ['40', 2_228_224, 83_558_400],
+            ['41', 2_228_224, 160_432_128],
+            ['50', 8_912_896, 311_951_360],
+            ['51', 8_912_896, 588_251_136],
+        ];
+
+        for (const [level, maxSamples, maxRate] of levels) {
+            if (samples <= maxSamples && sampleRate <= maxRate) {
+                return level;
+            }
+        }
+        return '51'; // fallback to highest
     }
 
     async addFrame(imageData: ImageData, _timestamp: number): Promise<void> {
@@ -216,7 +296,20 @@ export class WebCodecsEncoderWrapper implements VideoEncoderWrapper {
         // Keyframe every 15 frames — dithered patterns change unpredictably between
         // frames so frequent keyframes prevent progressive quality degradation.
         const keyFrame = this.frameIndex % 15 === 0;
-        this.encoder.encode(videoFrame, { keyFrame });
+        if (this._useQuantizer) {
+            const quantizer = this.qualityToQuantizer(this.options.quality);
+            // Quantizer must be nested under codec-specific key per the WebCodecs
+            // codec registration specs (e.g., VideoEncoderEncodeOptionsForAvc)
+            const encodeOptions: Record<string, unknown> = { keyFrame };
+            if (this.options.format === 'webm') {
+                encodeOptions.vp9 = { quantizer };
+            } else {
+                encodeOptions.avc = { quantizer };
+            }
+            this.encoder.encode(videoFrame, encodeOptions as VideoEncoderEncodeOptions);
+        } else {
+            this.encoder.encode(videoFrame, { keyFrame });
+        }
         videoFrame.close();
 
         // Flush ensures the encoded chunk is delivered to the muxer before we

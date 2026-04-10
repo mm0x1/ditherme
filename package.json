@@ -20,6 +20,7 @@
         "preview": "vite preview"
     },
     "dependencies": {
+        "@ffmpeg/core": "^0.12.6",
         "@ffmpeg/ffmpeg": "^0.12.15",
         "@ffmpeg/util": "^0.12.2",
         "@melloware/coloris": "^0.25.0",
@@ -28,7 +29,9 @@
         "culori": "^4.0.1",
         "electron-updater": "^6.3.9",
         "file-saver": "^2.0.5",
-        "mp4box": "^2.3.0"
+        "mp4-muxer": "^5.2.2",
+        "mp4box": "^2.3.0",
+        "webm-muxer": "^5.1.4"
     },
     "devDependencies": {
         "@types/file-saver": "^2.0.7",

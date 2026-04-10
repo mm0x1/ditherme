@@ -241,6 +241,15 @@ export class VideoManager {
                 // Get dithered frame
                 const ditheredFrame = await this.getDitheredFrame(i, state);
 
+                // Quick hash of first row of pixels to detect duplicate/frozen frames
+                const px = ditheredFrame.imageData.data;
+                let pixelHash = 0;
+                const hashLen = Math.min(px.length, ditheredFrame.imageData.width * 4);
+                for (let j = 0; j < hashLen; j += 4) {
+                    pixelHash = ((pixelHash << 5) - pixelHash + px[j] + px[j+1] + px[j+2]) | 0;
+                }
+                console.log(`[Export] Frame ${i}/${frameCount}: timestamp=${ditheredFrame.timestamp.toFixed(1)}ms, size=${ditheredFrame.imageData.width}x${ditheredFrame.imageData.height}, pixelHash=${pixelHash.toString(16)}`);
+
                 // Add to encoder
                 onProgress?.({
                     stage: 'encoding',

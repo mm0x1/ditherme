@@ -75,12 +75,13 @@ export class WebCodecsExtractor implements FrameExtractor {
     private samples: MP4Sample[] = [];
     private pendingFrames: Map<number, (frame: VideoFrame) => void> = new Map();
     private decodedFrames: Map<number, VideoFrame> = new Map();
-    private currentSampleIndex = 0;
+    private minTimestamp = Infinity;
 
     async open(file: File): Promise<VideoMetadata> {
         this._file = file;
         this.samples = [];
         this.decodedFrames.clear();
+        this.minTimestamp = Infinity;
 
         // Dynamic import mp4box
         const MP4Box = await import('mp4box');
@@ -184,8 +185,21 @@ export class WebCodecsExtractor implements FrameExtractor {
     }
 
     private handleDecodedFrame(frame: globalThis.VideoFrame): void {
-        const index = this.currentSampleIndex++;
         const timestamp = frame.timestamp ?? 0;
+
+        // Track the minimum timestamp (the first I-frame's CTS, used as base)
+        if (timestamp < this.minTimestamp) {
+            this.minTimestamp = timestamp;
+        }
+
+        // Compute presentation-order index from timestamp instead of using a
+        // sequential counter. The WebCodecs decoder outputs frames in decode
+        // order (I, P, B, B, B, ...) which differs from presentation order
+        // when the source has B-frames.
+        const frameDurationUs = 1_000_000 / this.metadata!.frameRate;
+        const index = Math.round((timestamp - this.minTimestamp) / frameDurationUs);
+
+        console.log(`[Extractor] Decoded frame: index=${index}, timestamp=${timestamp}µs (${(timestamp/1000).toFixed(1)}ms), size=${frame.displayWidth}x${frame.displayHeight}`);
 
         // Convert VideoFrame to ImageData
         const canvas = new OffscreenCanvas(frame.displayWidth, frame.displayHeight);
@@ -214,15 +228,23 @@ export class WebCodecsExtractor implements FrameExtractor {
     private decodePendingSamples(): void {
         if (!this.decoder) return;
 
+        let fed = 0;
         while (this.samples.length > 0 && this.decoder.decodeQueueSize < 10) {
             const sample = this.samples.shift()!;
+            const cts = sample.cts * 1_000_000 / sample.timescale;
+            const dts = sample.dts !== undefined ? sample.dts * 1_000_000 / sample.timescale : 'N/A';
+            console.log(`[Extractor] Feed sample: cts=${cts}µs, dts=${dts}, sync=${sample.is_sync}, size=${sample.data.byteLength}, remaining=${this.samples.length}`);
             const chunk = new EncodedVideoChunk({
                 type: sample.is_sync ? 'key' : 'delta',
-                timestamp: sample.cts * 1_000_000 / sample.timescale, // Convert to microseconds
+                timestamp: cts,
                 duration: sample.duration * 1_000_000 / sample.timescale,
                 data: sample.data,
             });
             this.decoder.decode(chunk);
+            fed++;
+        }
+        if (fed > 0) {
+            console.log(`[Extractor] Fed ${fed} samples, decodeQueueSize=${this.decoder.decodeQueueSize}, remaining=${this.samples.length}`);
         }
     }
 
@@ -260,6 +282,7 @@ export class WebCodecsExtractor implements FrameExtractor {
         this.samples = [];
         this.decodedFrames.clear();
         this.pendingFrames.clear();
+        this.minTimestamp = Infinity;
         this._file = null;
         this.metadata = null;
     }

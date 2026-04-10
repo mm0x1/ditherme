@@ -168,6 +168,54 @@ let wasmModule: LibDitherModule | null = null;
 let wasmLoadPromise: Promise<LibDitherModule> | null = null;
 
 /**
+ * Load the Emscripten factory function, working in both main thread and workers.
+ */
+async function loadCreateLibDither(): Promise<(opts: Record<string, unknown>) => Promise<LibDitherModule>> {
+    const globalScope = globalThis as Record<string, unknown>;
+
+    // Already available (main thread, previously loaded)
+    if (typeof globalScope.createLibDither === 'function') {
+        return globalScope.createLibDither as (opts: Record<string, unknown>) => Promise<LibDitherModule>;
+    }
+
+    const isWorker = typeof WorkerGlobalScope !== 'undefined' && self instanceof WorkerGlobalScope;
+
+    if (isWorker) {
+        // In a worker: fetch the JS and evaluate it. The Emscripten output assigns
+        // createLibDither to module.exports or defines it via define(), but in a
+        // bare worker neither exists. We provide stubs so the assignment succeeds.
+        const response = await fetch('/wasm/libdither.js');
+        const source = await response.text();
+        // Emscripten's UMD footer checks for module.exports first
+        const exports: Record<string, unknown> = {};
+        const module = { exports };
+        const fn = new Function('module', 'exports', source);
+        fn(module, exports);
+        const factory = (module.exports as Record<string, unknown>).default ?? module.exports;
+        if (typeof factory === 'function') {
+            return factory as (opts: Record<string, unknown>) => Promise<LibDitherModule>;
+        }
+        throw new Error('createLibDither factory not found after eval in worker');
+    } else {
+        // Main thread: use script injection
+        return new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = '/wasm/libdither.js';
+            script.onload = () => {
+                const factory = globalScope.createLibDither;
+                if (typeof factory === 'function') {
+                    resolve(factory as (opts: Record<string, unknown>) => Promise<LibDitherModule>);
+                } else {
+                    reject(new Error('createLibDither not found after script load'));
+                }
+            };
+            script.onerror = () => reject(new Error('Failed to load libdither.js'));
+            document.head.appendChild(script);
+        });
+    }
+}
+
+/**
  * Initialize the WASM module
  */
 export async function initWasm(): Promise<LibDitherModule> {
@@ -175,38 +223,12 @@ export async function initWasm(): Promise<LibDitherModule> {
     if (wasmLoadPromise) return wasmLoadPromise;
 
     wasmLoadPromise = (async () => {
-        // Load WASM module using script injection for Emscripten compatibility
-        return new Promise<LibDitherModule>((resolve, reject) => {
-            // Check if already loaded
-            if ((window as any).createLibDither) {
-                (window as any).createLibDither({
-                    locateFile: (path: string) => `/wasm/${path}`
-                }).then((module: LibDitherModule) => {
-                    wasmModule = module;
-                    resolve(module);
-                }).catch(reject);
-                return;
-            }
-
-            // Load script
-            const script = document.createElement('script');
-            script.src = '/wasm/libdither.js';
-            script.onload = () => {
-                const createModule = (window as any).createLibDither;
-                if (!createModule) {
-                    reject(new Error('createLibDither not found after script load'));
-                    return;
-                }
-                createModule({
-                    locateFile: (path: string) => `/wasm/${path}`
-                }).then((module: LibDitherModule) => {
-                    wasmModule = module;
-                    resolve(module);
-                }).catch(reject);
-            };
-            script.onerror = () => reject(new Error('Failed to load libdither.js'));
-            document.head.appendChild(script);
+        const createModule = await loadCreateLibDither();
+        const module = await createModule({
+            locateFile: (path: string) => `/wasm/${path}`
         });
+        wasmModule = module;
+        return module;
     })();
 
     return wasmLoadPromise;

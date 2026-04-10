@@ -52,6 +52,8 @@ export function initViewport(container: HTMLElement): ViewportControls {
     // Track current video frame for rendering
     let currentVideoFrame: ImageData | null = null;
     let pendingVideoFrame: number | null = null;
+    let lastRenderedFrameIndex = -1;
+    let videoFrameInFlight = false;
 
     // Debounce timer for video settings changes
     let videoSettingsDebounceTimer: ReturnType<typeof setTimeout> | null = null;
@@ -60,29 +62,32 @@ export function initViewport(container: HTMLElement): ViewportControls {
      * Render the current image to canvas
      */
     function render(): void {
-        // Cancel any pending render
+        const state = app.getState();
+
+        // Video mode: don't gate behind requestAnimationFrame — playback needs
+        // every frame request to proceed without cancelling the previous one.
+        if (state.isVideoMode && state.videoMetadata) {
+            renderVideoFrame(state);
+            return;
+        }
+
+        // Cancel any pending render for static images
         if (animationFrameId !== null) {
             cancelAnimationFrame(animationFrameId);
         }
 
-        animationFrameId = requestAnimationFrame(async () => {
-            const state = app.getState();
+        animationFrameId = requestAnimationFrame(() => {
+            const currentState = app.getState();
 
-            // Handle video mode
-            if (state.isVideoMode && state.videoMetadata) {
-                await renderVideoFrame(state);
-                return;
-            }
-
-            const image = state.showOriginal ? state.sourceImage : (state.ditheredImage ?? state.sourceImage);
+            const image = currentState.showOriginal ? currentState.sourceImage : (currentState.ditheredImage ?? currentState.sourceImage);
 
             // Update empty state visibility
             if (emptyState) {
-                emptyState.classList.toggle('hidden', image !== null || state.isVideoMode);
+                emptyState.classList.toggle('hidden', image !== null || currentState.isVideoMode);
             }
 
             // Update video mode indicator
-            container.classList.toggle('video-mode', state.isVideoMode);
+            container.classList.toggle('video-mode', currentState.isVideoMode);
 
             if (!image) {
                 // Clear canvas when no image
@@ -93,7 +98,7 @@ export function initViewport(container: HTMLElement): ViewportControls {
                 return;
             }
 
-            renderImage(image, state);
+            renderImage(image, currentState);
             animationFrameId = null;
         });
     }
@@ -142,9 +147,20 @@ export function initViewport(container: HTMLElement): ViewportControls {
     async function renderVideoFrame(state: ReturnType<typeof app.getState>): Promise<void> {
         const frameIndex = state.currentFrame;
 
-        // Skip if we're already loading this frame
+        // Skip if we're already loading this exact frame
         if (pendingVideoFrame === frameIndex && currentVideoFrame) {
             renderImage(currentVideoFrame, state);
+            return;
+        }
+
+        // During playback, only allow one dither request in flight at a time.
+        // Otherwise, the worker queue fills up with stale requests and every
+        // completed frame gets discarded because a newer one was requested.
+        if (videoFrameInFlight && state.isPlaying) {
+            // Show whatever we have while we wait
+            if (currentVideoFrame) {
+                renderImage(currentVideoFrame, state);
+            }
             return;
         }
 
@@ -158,24 +174,43 @@ export function initViewport(container: HTMLElement): ViewportControls {
         // Update video mode indicator
         container.classList.add('video-mode');
 
+        // Show the last completed frame immediately while we load the new one
+        if (currentVideoFrame) {
+            renderImage(currentVideoFrame, state);
+        }
+
+        videoFrameInFlight = true;
+
         try {
             const videoManager = getVideoManager();
 
-            // Check if we should show original source frame
+            let imageData: ImageData;
             if (state.showOriginal) {
                 const sourceFrame = await videoManager.getSourceFrame(frameIndex);
-                currentVideoFrame = sourceFrame.imageData;
+                imageData = sourceFrame.imageData;
             } else {
                 const ditheredFrame = await videoManager.getDitheredFrame(frameIndex, state);
-                currentVideoFrame = ditheredFrame.imageData;
+                imageData = ditheredFrame.imageData;
             }
 
-            // Only render if this is still the requested frame
-            if (pendingVideoFrame === frameIndex) {
-                renderImage(currentVideoFrame, state);
+            // Render if this frame is newer than what's on screen, or if we looped
+            const looped = frameIndex < lastRenderedFrameIndex - 10;
+            if (frameIndex >= lastRenderedFrameIndex || looped || !state.isPlaying) {
+                currentVideoFrame = imageData;
+                lastRenderedFrameIndex = frameIndex;
+                renderImage(currentVideoFrame, app.getState());
             }
         } catch (error) {
             console.error('[Viewport] Error loading video frame:', error);
+        } finally {
+            videoFrameInFlight = false;
+        }
+
+        // If playback is still going, immediately request the current frame
+        // (which may have advanced while we were dithering)
+        const currentState = app.getState();
+        if (currentState.isPlaying && currentState.currentFrame !== frameIndex) {
+            renderVideoFrame(currentState);
         }
 
         animationFrameId = null;
@@ -415,6 +450,7 @@ export function initViewport(container: HTMLElement): ViewportControls {
                 // Reset pendingVideoFrame to force refetch, but keep currentVideoFrame
                 // This shows the old frame while the new one processes (instant feedback)
                 pendingVideoFrame = null;
+                lastRenderedFrameIndex = -1;
                 render();
             }, VIDEO_SETTINGS_DEBOUNCE_MS);
         }

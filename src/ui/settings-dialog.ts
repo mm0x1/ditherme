@@ -161,7 +161,7 @@ export function showSettingsDialog(): void {
             cacheMaxMemoryMB: parseInt(cacheSizeInput.value, 10),
             defaultMode: defaultModeSelect.value as 'mono' | 'color',
             apiEnabled: apiEnabledCheckbox.checked,
-            apiPort: isNaN(apiPort) ? 7842 : apiPort,
+            apiPort: Math.max(1024, Math.min(65535, isNaN(apiPort) ? 7842 : apiPort)),
             apiAuthEnabled: apiAuthEnabledCheckbox.checked,
             apiAuthToken
         });

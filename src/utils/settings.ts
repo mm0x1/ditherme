@@ -22,28 +22,26 @@ class SettingsManager extends EventTarget {
      */
     private load(): UserSettings {
         try {
-            console.time('settings-load');
             const stored = localStorage.getItem(STORAGE_KEY);
             if (stored) {
                 // Defensive: check for extremely large data that could slow parsing
                 if (stored.length > 100000) {
-                    console.warn('Settings data is unusually large, resetting to defaults');
+                    console.warn('[Settings] Data is unusually large, resetting to defaults');
                     localStorage.removeItem(STORAGE_KEY);
-                    console.timeEnd('settings-load');
                     return { ...DEFAULT_SETTINGS };
                 }
                 const parsed = JSON.parse(stored);
                 // Merge with defaults to handle new settings added in updates
-                console.timeEnd('settings-load');
                 return { ...DEFAULT_SETTINGS, ...parsed };
             }
-            console.timeEnd('settings-load');
         } catch (e) {
             console.warn('Failed to load settings from localStorage:', e);
             // Clear corrupt data
             try {
                 localStorage.removeItem(STORAGE_KEY);
-            } catch {}
+            } catch (removeErr) {
+                console.debug('[Settings] Failed to clear corrupt localStorage data:', removeErr);
+            }
         }
         return { ...DEFAULT_SETTINGS };
     }

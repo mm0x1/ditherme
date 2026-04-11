@@ -353,6 +353,7 @@ function createCachedPalette(wasm: LibDitherModule, palette: Palette): { cachedP
 
     // Create a temporary buffer for ByteColor struct (4 bytes: r, g, b, a)
     const colorPtr = wasm._malloc(4);
+    if (colorPtr === 0) throw new Error('[WASM] Failed to allocate color buffer');
 
     for (let i = 0; i < palette.colors.length; i++) {
         const color = palette.colors[i];
@@ -751,6 +752,7 @@ export async function wasmDitherMono(
         else if (algorithm.startsWith('riemersma-')) {
             const curvePtr = getRiemersmaCurve(wasm, algorithm);
             const dimPtr = wasm._malloc(4);
+            if (dimPtr === 0) throw new Error('[WASM] Failed to allocate dim buffer');
             wasm._create_curve(curvePtr, width, height, dimPtr);
             const useRiemersma = algorithm.includes('-mod') ? 0 : 1;
             wasm._riemersma_dither(imgPtr, curvePtr, useRiemersma, outPtr);

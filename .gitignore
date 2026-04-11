@@ -6,3 +6,5 @@ dist-electron/
 *.tsbuildinfo
 build/
 .ai/
+debug/
+wasm/libdither/

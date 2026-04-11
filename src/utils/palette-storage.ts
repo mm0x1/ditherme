@@ -3,6 +3,7 @@
  */
 
 import type { Color, SavedPalette } from '../types/palette.ts';
+import { generateId } from './id.ts';
 
 const STORAGE_KEY = 'ditherme_palettes';
 const MAX_PALETTES = 50;
@@ -40,7 +41,9 @@ class PaletteStorageManager extends EventTarget {
             console.warn('Failed to load palettes from localStorage:', e);
             try {
                 localStorage.removeItem(STORAGE_KEY);
-            } catch {}
+            } catch (removeErr) {
+                console.debug('[PaletteStorage] Failed to clear corrupt localStorage data:', removeErr);
+            }
         }
         return [];
     }
@@ -57,13 +60,6 @@ class PaletteStorageManager extends EventTarget {
         } catch (e) {
             console.warn('Failed to save palettes to localStorage:', e);
         }
-    }
-
-    /**
-     * Generate a unique ID
-     */
-    private generateId(): string {
-        return `pal_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
     }
 
     /**
@@ -112,7 +108,7 @@ class PaletteStorageManager extends EventTarget {
 
         // Create new palette
         const palette: SavedPalette = {
-            id: this.generateId(),
+            id: generateId('pal'),
             name,
             colors: [...colors],
             createdAt: now,

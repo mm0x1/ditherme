@@ -263,6 +263,11 @@ function initMenus(): void {
                 return;
             }
 
+            if (!navigator.clipboard?.write) {
+                setStatus('Clipboard not available in this context');
+                return;
+            }
+
             try {
                 // Convert ImageData to blob
                 const canvas = document.createElement('canvas');
@@ -289,6 +294,10 @@ function initMenus(): void {
     // Paste action
     document.querySelectorAll('[data-action="paste"]').forEach(btn => {
         btn.addEventListener('click', async () => {
+            if (!navigator.clipboard?.read) {
+                setStatus('Clipboard not available in this context');
+                return;
+            }
             try {
                 const clipboardItems = await navigator.clipboard.read();
                 for (const item of clipboardItems) {

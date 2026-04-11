@@ -11,13 +11,7 @@ import type {
     BatchJobResult,
     ImageSource
 } from './types.ts';
-
-/**
- * Generate a unique job ID
- */
-function generateJobId(): string {
-    return `batch_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-}
+import { generateId } from '../utils/id.ts';
 
 /**
  * Batch Queue Manager implementation
@@ -37,7 +31,7 @@ export class BatchQueueManager implements BatchQueue {
      * Create a new batch job
      */
     createJob(items: BatchJobItem[], settings: BatchJobSettings): BatchJob {
-        const id = generateJobId();
+        const id = generateId('batch');
 
         const job: BatchJob = {
             id,

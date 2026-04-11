@@ -278,6 +278,9 @@ export function findNearestColor(
     palette: Color[],
     distanceFunc: (c1: Color, c2: Color) => number = colorDistanceEuclidean
 ): Color {
+    if (palette.length === 0) {
+        throw new Error('Cannot find nearest color in empty palette');
+    }
     let minDist = Infinity;
     let nearest = palette[0];
 
@@ -300,6 +303,9 @@ export function findNearestColorIndex(
     palette: Color[],
     distanceFunc: (c1: Color, c2: Color) => number = colorDistanceEuclidean
 ): number {
+    if (palette.length === 0) {
+        throw new Error('Cannot find nearest color in empty palette');
+    }
     let minDist = Infinity;
     let nearestIndex = 0;
 

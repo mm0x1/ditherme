@@ -153,7 +153,7 @@ export class WebCodecsEncoderWrapper implements VideoEncoderWrapper {
         let chunkIndex = 0;
         this.encoder = new VideoEncoder({
             output: (chunk: EncodedVideoChunk, meta?: EncodedVideoChunkMetadata) => {
-                console.log(`[Encoder] Chunk ${chunkIndex++}: type=${chunk.type}, timestamp=${chunk.timestamp}µs, duration=${chunk.duration}µs, size=${chunk.byteLength}`);
+                console.debug(`[Encoder] Chunk ${chunkIndex++}: type=${chunk.type}, timestamp=${chunk.timestamp}µs, duration=${chunk.duration}µs, size=${chunk.byteLength}`);
                 muxer.addVideoChunk(chunk, meta);
             },
             error: (e: Error) => {
@@ -180,12 +180,12 @@ export class WebCodecsEncoderWrapper implements VideoEncoderWrapper {
             if (support.supported) {
                 useQuantizer = true;
             }
-        } catch {
-            // quantizer mode not supported by this browser
+        } catch (e) {
+            console.debug('[Encoder] Quantizer mode not supported by this browser:', e);
         }
 
         if (useQuantizer) {
-            console.log(`[Encoder] Config: codec=${codec}, ${width}x${height}, bitrateMode=quantizer, qp=${qp}, fps=${options.frameRate}, quality=${options.quality}`);
+            console.debug(`[Encoder] Config: codec=${codec}, ${width}x${height}, bitrateMode=quantizer, qp=${qp}, fps=${options.frameRate}, quality=${options.quality}`);
             this.encoder.configure(quantizerConfig);
         } else {
             // Fallback: high bitrate VBR mode
@@ -204,7 +204,7 @@ export class WebCodecsEncoderWrapper implements VideoEncoderWrapper {
                 throw new Error(`Codec ${codec} not supported`);
             }
 
-            console.log(`[Encoder] Config (fallback): codec=${codec}, ${width}x${height}, bitrate=${(bitrate/1_000_000).toFixed(2)}Mbps, fps=${options.frameRate}, quality=${options.quality}`);
+            console.debug(`[Encoder] Config (fallback): codec=${codec}, ${width}x${height}, bitrate=${(bitrate/1_000_000).toFixed(2)}Mbps, fps=${options.frameRate}, quality=${options.quality}`);
             this.encoder.configure(config);
         }
 
@@ -503,13 +503,13 @@ export class FFmpegEncoderWrapper implements VideoEncoderWrapper {
         for (const file of this.frameFiles) {
             try {
                 await this.ffmpeg.deleteFile(file);
-            } catch { /* ignore */ }
+            } catch (e) { console.warn('[Encoder] Failed to delete frame file:', file, e); }
         }
 
         // Delete output file
         try {
             await this.ffmpeg.deleteFile(outputFile);
-        } catch { /* ignore */ }
+        } catch (e) { console.warn('[Encoder] Failed to delete output file:', outputFile, e); }
 
         this.frameFiles = [];
     }

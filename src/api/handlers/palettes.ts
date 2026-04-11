@@ -23,8 +23,8 @@ function getSavedPalettes(): Array<{ id: string; name: string; colors: Color[] }
         if (stored) {
             return JSON.parse(stored);
         }
-    } catch {
-        // Ignore parse errors
+    } catch (e) {
+        console.debug('[Palettes] Failed to parse saved palettes from localStorage:', e);
     }
     return [];
 }

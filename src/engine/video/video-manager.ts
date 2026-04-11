@@ -248,7 +248,7 @@ export class VideoManager {
                 for (let j = 0; j < hashLen; j += 4) {
                     pixelHash = ((pixelHash << 5) - pixelHash + px[j] + px[j+1] + px[j+2]) | 0;
                 }
-                console.log(`[Export] Frame ${i}/${frameCount}: timestamp=${ditheredFrame.timestamp.toFixed(1)}ms, size=${ditheredFrame.imageData.width}x${ditheredFrame.imageData.height}, pixelHash=${pixelHash.toString(16)}`);
+                console.debug(`[Export] Frame ${i}/${frameCount}: timestamp=${ditheredFrame.timestamp.toFixed(1)}ms, size=${ditheredFrame.imageData.width}x${ditheredFrame.imageData.height}, pixelHash=${pixelHash.toString(16)}`);
 
                 // Add to encoder
                 onProgress?.({

@@ -4,6 +4,18 @@ import { ALGORITHMS, getAlgorithmsByCategory, shouldUseWasm, isWasmLoaded } from
 import { settings } from '../utils/settings.ts';
 
 /**
+ * Escape HTML special characters to prevent injection via template strings.
+ */
+function escapeHtml(str: string): string {
+    return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+/**
  * Category display order
  */
 const CATEGORY_ORDER: AlgorithmCategory[] = [
@@ -52,8 +64,8 @@ export function initSidebar(container: HTMLElement): void {
                         title="${isFavorite ? 'Remove from favorites' : 'Add to favorites'}">
                     ${isFavorite ? '★' : '☆'}
                 </button>
-                <span class="algorithm-name">${algo.name}</span>
-                ${warning ? `<span class="info-badge" data-tooltip="${warning}">i</span>` : ''}
+                <span class="algorithm-name">${escapeHtml(algo.name)}</span>
+                ${warning ? `<span class="info-badge" data-tooltip="${escapeHtml(warning)}">i</span>` : ''}
                 ${showWasmBadge ? '<span class="wasm-badge" data-tooltip="WASM accelerated">WASM</span>' : ''}
             </div>
         `;
@@ -63,7 +75,6 @@ export function initSidebar(container: HTMLElement): void {
      * Render algorithm list for current mode
      */
     function renderAlgorithmList(filter = ''): void {
-        console.time('renderAlgorithmList');
         const state = app.getState();
         const mode = state.mode;
         const currentAlgorithm = state.algorithm;
@@ -120,7 +131,6 @@ export function initSidebar(container: HTMLElement): void {
 
         // Attach favorite button listeners
         attachFavoriteListeners();
-        console.timeEnd('renderAlgorithmList');
     }
 
     /**

@@ -230,12 +230,12 @@ export class VideoManager {
                     throw new Error('Export cancelled');
                 }
 
-                // Report progress
+                // Report progress before dithering this frame
                 onProgress?.({
                     stage: 'dithering',
                     currentFrame: i,
                     totalFrames: frameCount,
-                    percentage: Math.round((i / frameCount) * 50), // First 50% is dithering
+                    percentage: Math.round((i / frameCount) * 100),
                 });
 
                 // Get dithered frame
@@ -255,7 +255,7 @@ export class VideoManager {
                     stage: 'encoding',
                     currentFrame: i,
                     totalFrames: frameCount,
-                    percentage: 50 + Math.round((i / frameCount) * 50), // Second 50% is encoding
+                    percentage: Math.round(((i + 1) / frameCount) * 100),
                 });
 
                 await encoder.addFrame(ditheredFrame.imageData, ditheredFrame.timestamp);

@@ -199,7 +199,7 @@ export class WebCodecsExtractor implements FrameExtractor {
         const frameDurationUs = 1_000_000 / this.metadata!.frameRate;
         const index = Math.round((timestamp - this.minTimestamp) / frameDurationUs);
 
-        console.log(`[Extractor] Decoded frame: index=${index}, timestamp=${timestamp}µs (${(timestamp/1000).toFixed(1)}ms), size=${frame.displayWidth}x${frame.displayHeight}`);
+        console.debug(`[Extractor] Decoded frame: index=${index}, timestamp=${timestamp}µs (${(timestamp/1000).toFixed(1)}ms), size=${frame.displayWidth}x${frame.displayHeight}`);
 
         // Convert VideoFrame to ImageData
         const canvas = new OffscreenCanvas(frame.displayWidth, frame.displayHeight);
@@ -233,7 +233,7 @@ export class WebCodecsExtractor implements FrameExtractor {
             const sample = this.samples.shift()!;
             const cts = sample.cts * 1_000_000 / sample.timescale;
             const dts = sample.dts !== undefined ? sample.dts * 1_000_000 / sample.timescale : 'N/A';
-            console.log(`[Extractor] Feed sample: cts=${cts}µs, dts=${dts}, sync=${sample.is_sync}, size=${sample.data.byteLength}, remaining=${this.samples.length}`);
+            console.debug(`[Extractor] Feed sample: cts=${cts}µs, dts=${dts}, sync=${sample.is_sync}, size=${sample.data.byteLength}, remaining=${this.samples.length}`);
             const chunk = new EncodedVideoChunk({
                 type: sample.is_sync ? 'key' : 'delta',
                 timestamp: cts,
@@ -244,7 +244,7 @@ export class WebCodecsExtractor implements FrameExtractor {
             fed++;
         }
         if (fed > 0) {
-            console.log(`[Extractor] Fed ${fed} samples, decodeQueueSize=${this.decoder.decodeQueueSize}, remaining=${this.samples.length}`);
+            console.debug(`[Extractor] Fed ${fed} samples, decodeQueueSize=${this.decoder.decodeQueueSize}, remaining=${this.samples.length}`);
         }
     }
 
@@ -404,9 +404,11 @@ export class FFmpegExtractor implements FrameExtractor {
         if (this.ffmpeg) {
             try {
                 // Clean up input file
-                this.ffmpeg.deleteFile(this.inputFileName).catch(() => {});
-            } catch {
-                // Ignore cleanup errors
+                this.ffmpeg.deleteFile(this.inputFileName).catch((e: unknown) => {
+                    console.warn('[FFmpegExtractor] Failed to delete input file:', this.inputFileName, e);
+                });
+            } catch (e) {
+                console.warn('[FFmpegExtractor] Failed to initiate input file cleanup:', e);
             }
         }
         this.file = null;

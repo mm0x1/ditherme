@@ -37,7 +37,8 @@ export async function isDecoderSupported(codec: string): Promise<boolean> {
             codedHeight: 1080,
         });
         return support.supported === true;
-    } catch {
+    } catch (e) {
+        console.debug('[Capability] Decoder codec check failed:', codec, e);
         return false;
     }
 }
@@ -57,7 +58,8 @@ export async function isEncoderSupported(codec: string): Promise<boolean> {
             framerate: 30,
         });
         return support.supported === true;
-    } catch {
+    } catch (e) {
+        console.debug('[Capability] Encoder codec check failed:', codec, e);
         return false;
     }
 }

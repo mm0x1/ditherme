@@ -17,7 +17,12 @@
         "build:linux": "electron-vite build && electron-builder --linux",
         "build:win": "electron-vite build && electron-builder --win",
         "typecheck": "tsc --noEmit",
-        "preview": "vite preview"
+        "preview": "vite preview",
+        "test": "vitest run",
+        "test:unit": "vitest run tests/unit tests/workers",
+        "test:integration": "vitest run tests/integration",
+        "test:coverage": "vitest run --coverage",
+        "test:watch": "vitest"
     },
     "dependencies": {
         "@ffmpeg/core": "^0.12.6",
@@ -35,12 +40,16 @@
     },
     "devDependencies": {
         "@types/file-saver": "^2.0.7",
+        "@types/jsdom": "^28.0.1",
         "@types/node": "^20.11.5",
+        "@vitest/coverage-v8": "^4.1.4",
         "electron": "^33.0.0",
         "electron-builder": "^25.1.8",
         "electron-vite": "^2.3.0",
+        "jsdom": "^29.0.2",
         "typescript": "^5.3.3",
-        "vite": "^5.0.12"
+        "vite": "^5.0.12",
+        "vitest": "^4.1.4"
     },
     "engines": {
         "node": ">=18.0.0"

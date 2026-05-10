@@ -354,7 +354,8 @@ export function shouldUpdateViewport(changes: StateUpdate): boolean {
         'panX',
         'panY',
         'currentFrame',
-        'isVideoMode'
+        'isVideoMode',
+        'isPlaying'
     ];
 
     return viewportTriggers.some(key => key in changes);

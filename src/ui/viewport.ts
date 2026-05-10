@@ -51,9 +51,12 @@ export function initViewport(container: HTMLElement): ViewportControls {
 
     // Track current video frame for rendering
     let currentVideoFrame: ImageData | null = null;
-    let pendingVideoFrame: number | null = null;
     let lastRenderedFrameIndex = -1;
-    let videoFrameInFlight = false;
+    // Monotonic counter for video frame requests. Each new request bumps it;
+    // when a request completes we only render if its id is still the latest.
+    // This avoids a hung fetch (e.g. a stuck source/decoder request) blocking
+    // all future renders the way a single in-flight gate would.
+    let videoFrameRequestId = 0;
 
     // Debounce timer for video settings changes
     let videoSettingsDebounceTimer: ReturnType<typeof setTimeout> | null = null;
@@ -146,32 +149,20 @@ export function initViewport(container: HTMLElement): ViewportControls {
      */
     async function renderVideoFrame(state: ReturnType<typeof app.getState>): Promise<void> {
         const frameIndex = state.currentFrame;
+        const wantOriginal = state.showOriginal;
 
-        // Skip if we're already loading this exact frame
-        if (pendingVideoFrame === frameIndex && currentVideoFrame) {
+        // Skip only if the frame currently on the canvas is exactly this one.
+        if (lastRenderedFrameIndex === frameIndex && currentVideoFrame && !wantOriginal) {
             renderImage(currentVideoFrame, state);
             return;
         }
 
-        // During playback, only allow one dither request in flight at a time.
-        // Otherwise, the worker queue fills up with stale requests and every
-        // completed frame gets discarded because a newer one was requested.
-        if (videoFrameInFlight && state.isPlaying) {
-            // Show whatever we have while we wait
-            if (currentVideoFrame) {
-                renderImage(currentVideoFrame, state);
-            }
-            return;
-        }
+        const requestId = ++videoFrameRequestId;
 
-        pendingVideoFrame = frameIndex;
-
-        // Update empty state
         if (emptyState) {
             emptyState.classList.add('hidden');
         }
 
-        // Update video mode indicator
         container.classList.add('video-mode');
 
         // Show the last completed frame immediately while we load the new one
@@ -179,13 +170,11 @@ export function initViewport(container: HTMLElement): ViewportControls {
             renderImage(currentVideoFrame, state);
         }
 
-        videoFrameInFlight = true;
-
         try {
             const videoManager = getVideoManager();
 
             let imageData: ImageData;
-            if (state.showOriginal) {
+            if (wantOriginal) {
                 const sourceFrame = await videoManager.getSourceFrame(frameIndex);
                 imageData = sourceFrame.imageData;
             } else {
@@ -193,24 +182,15 @@ export function initViewport(container: HTMLElement): ViewportControls {
                 imageData = ditheredFrame.imageData;
             }
 
-            // Render if this frame is newer than what's on screen, or if we looped
-            const looped = frameIndex < lastRenderedFrameIndex - 10;
-            if (frameIndex >= lastRenderedFrameIndex || looped || !state.isPlaying) {
+            // Only render if no newer request has been made since this one
+            // started. A hung older request can no longer block the canvas.
+            if (requestId === videoFrameRequestId) {
                 currentVideoFrame = imageData;
                 lastRenderedFrameIndex = frameIndex;
                 renderImage(currentVideoFrame, app.getState());
             }
         } catch (error) {
             console.error('[Viewport] Error loading video frame:', error);
-        } finally {
-            videoFrameInFlight = false;
-        }
-
-        // If playback is still going, immediately request the current frame
-        // (which may have advanced while we were dithering)
-        const currentState = app.getState();
-        if (currentState.isPlaying && currentState.currentFrame !== frameIndex) {
-            renderVideoFrame(currentState);
         }
 
         animationFrameId = null;
@@ -447,9 +427,9 @@ export function initViewport(container: HTMLElement): ViewportControls {
                 videoSettingsDebounceTimer = null;
                 const videoManager = getVideoManager();
                 videoManager.invalidateCache();
-                // Reset pendingVideoFrame to force refetch, but keep currentVideoFrame
-                // This shows the old frame while the new one processes (instant feedback)
-                pendingVideoFrame = null;
+                // Force a refetch by invalidating lastRenderedFrameIndex.
+                // currentVideoFrame is kept so we keep showing the old frame
+                // while the new one processes (instant feedback).
                 lastRenderedFrameIndex = -1;
                 render();
             }, VIDEO_SETTINGS_DEBOUNCE_MS);

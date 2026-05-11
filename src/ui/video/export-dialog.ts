@@ -39,11 +39,6 @@ export function showExportDialog(metadata: VideoMetadata): Promise<ExportDialogR
                 </div>
 
                 <div class="form-group">
-                    <label for="export-fps">Frame Rate: <span id="fps-value">${Math.round(metadata.frameRate)}</span> fps</label>
-                    <input type="range" id="export-fps" class="form-range" min="8" max="30" value="${Math.round(metadata.frameRate)}">
-                </div>
-
-                <div class="form-group">
                     <label for="export-resolution">Resolution</label>
                     <select id="export-resolution" class="form-select">
                         <option value="original">Original (${metadata.width}x${metadata.height})</option>
@@ -81,8 +76,6 @@ export function showExportDialog(metadata: VideoMetadata): Promise<ExportDialogR
         const formatSelect = modal.querySelector('#export-format') as HTMLSelectElement;
         const qualitySlider = modal.querySelector('#export-quality') as HTMLInputElement;
         const qualityValue = modal.querySelector('#quality-value') as HTMLElement;
-        const fpsSlider = modal.querySelector('#export-fps') as HTMLInputElement;
-        const fpsValue = modal.querySelector('#fps-value') as HTMLElement;
         const resolutionSelect = modal.querySelector('#export-resolution') as HTMLSelectElement;
         const estimateEl = modal.querySelector('#export-estimate') as HTMLElement;
         const gifWarning = modal.querySelector('#gif-warning') as HTMLElement;
@@ -115,7 +108,7 @@ export function showExportDialog(metadata: VideoMetadata): Promise<ExportDialogR
         function updateEstimate(): void {
             const format = formatSelect.value as VideoExportFormat;
             const quality = parseInt(qualitySlider.value, 10);
-            const fps = parseInt(fpsSlider.value, 10);
+            const fps = metadata.frameRate;
             const { width, height } = getOutputDimensions();
             const duration = metadata.duration;
             const frameCount = Math.round(duration * fps);
@@ -165,10 +158,6 @@ export function showExportDialog(metadata: VideoMetadata): Promise<ExportDialogR
             qualityValue.textContent = qualitySlider.value;
             updateEstimate();
         });
-        fpsSlider.addEventListener('input', () => {
-            fpsValue.textContent = fpsSlider.value;
-            updateEstimate();
-        });
         resolutionSelect.addEventListener('change', updateEstimate);
 
         cancelBtn.addEventListener('click', () => {
@@ -181,7 +170,7 @@ export function showExportDialog(metadata: VideoMetadata): Promise<ExportDialogR
             const options: VideoExportOptions = {
                 format: formatSelect.value as VideoExportFormat,
                 quality: parseInt(qualitySlider.value, 10),
-                frameRate: parseInt(fpsSlider.value, 10),
+                frameRate: metadata.frameRate,
                 width,
                 height,
             };

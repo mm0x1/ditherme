@@ -53,7 +53,7 @@ export interface VideoExportOptions {
 /**
  * Processing stage for progress reporting
  */
-export type VideoProcessingStage = 'loading' | 'extracting' | 'dithering' | 'encoding' | 'finalizing';
+export type VideoProcessingStage = 'loading' | 'extracting' | 'dithering' | 'encoding' | 'finalizing' | 'remuxing';
 
 /**
  * Progress information during video processing

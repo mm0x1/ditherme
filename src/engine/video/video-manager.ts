@@ -269,7 +269,14 @@ export class VideoManager {
                 percentage: 100,
             });
 
-            return await encoder.finalize();
+            return await encoder.finalize(() => {
+                onProgress?.({
+                    stage: 'remuxing',
+                    currentFrame: frameCount,
+                    totalFrames: frameCount,
+                    percentage: 100,
+                });
+            });
         } catch (error) {
             encoder.abort();
             throw error;

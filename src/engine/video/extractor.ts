@@ -76,12 +76,16 @@ export class WebCodecsExtractor implements FrameExtractor {
     private pendingFrames: Map<number, (frame: VideoFrame) => void> = new Map();
     private decodedFrames: Map<number, VideoFrame> = new Map();
     private minTimestamp = Infinity;
+    private allSamplesQueued = false;
+    private flushPromise: Promise<void> | null = null;
 
     async open(file: File): Promise<VideoMetadata> {
         this._file = file;
         this.samples = [];
         this.decodedFrames.clear();
         this.minTimestamp = Infinity;
+        this.allSamplesQueued = false;
+        this.flushPromise = null;
 
         // Dynamic import mp4box
         const MP4Box = await import('mp4box');
@@ -143,6 +147,8 @@ export class WebCodecsExtractor implements FrameExtractor {
         (arrayBuffer as ArrayBufferWithFileStart).fileStart = 0;
         mp4boxFile.appendBuffer(arrayBuffer);
         mp4boxFile.flush();
+        // After flush, mp4box has delivered every sample via onSamples
+        this.allSamplesQueued = true;
     }
 
     private initDecoder(track: MP4VideoTrack): void {
@@ -258,6 +264,20 @@ export class WebCodecsExtractor implements FrameExtractor {
             this.pendingFrames.set(index, resolve);
             // Trigger more decoding
             this.decodePendingSamples();
+            // If we've fed every sample but the requested frame still isn't out,
+            // the decoder is holding tail frames in its reorder buffer.
+            // Flush once to drain them.
+            this.maybeFlushDecoder();
+        });
+    }
+
+    private maybeFlushDecoder(): void {
+        if (!this.decoder || this.flushPromise) return;
+        if (!this.allSamplesQueued || this.samples.length > 0) return;
+        if (this.pendingFrames.size === 0) return;
+        console.debug('[Extractor] All samples fed, flushing decoder to drain tail frames');
+        this.flushPromise = this.decoder.flush().catch((e) => {
+            console.error('[Extractor] Decoder flush error:', e);
         });
     }
 
@@ -283,6 +303,8 @@ export class WebCodecsExtractor implements FrameExtractor {
         this.decodedFrames.clear();
         this.pendingFrames.clear();
         this.minTimestamp = Infinity;
+        this.allSamplesQueued = false;
+        this.flushPromise = null;
         this._file = null;
         this.metadata = null;
     }

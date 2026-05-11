@@ -25,6 +25,7 @@ function formatStage(stage: string): string {
         case 'dithering': return 'Applying dither...';
         case 'encoding': return 'Encoding video...';
         case 'finalizing': return 'Finalizing...';
+        case 'remuxing': return 'Optimizing for editors...';
         default: return stage;
     }
 }

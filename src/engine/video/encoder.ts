@@ -27,17 +27,25 @@ async function getFFmpeg(): Promise<FFmpegInstance> {
 
     const { FFmpeg } = await import('@ffmpeg/ffmpeg');
     const { toBlobURL } = await import('@ffmpeg/util');
+    // Vite mangles @ffmpeg/ffmpeg's internal worker URL during dep pre-bundling
+    // (NS_ERROR_CORRUPTED_CONTENT / wrong MIME). Importing the worker file with
+    // `?worker&url` produces a stable URL we can hand to ffmpeg.load() via
+    // classWorkerURL, bypassing the pre-bundling.
+    const workerURL = (await import('@ffmpeg/ffmpeg/worker?worker&url')).default;
 
     const ffmpeg = new FFmpeg();
 
-    // Use single-threaded core (no SharedArrayBuffer / COOP+COEP headers required).
-    // Load via blob URLs so the WASM is fetched with correct MIME types.
-    const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd';
+    // Single-threaded core (no SharedArrayBuffer / COOP+COEP headers required).
+    // Vite serves @ffmpeg/ffmpeg's worker as a module worker, which cannot use
+    // importScripts — it must dynamic-`import()` the core. That requires the
+    // ESM build of @ffmpeg/core, not the UMD one. Load via blob URLs to keep
+    // MIME types correct across CDN/CORS quirks.
+    const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm';
 
     const coreURL = await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript');
     const wasmURL = await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm');
 
-    await ffmpeg.load({ coreURL, wasmURL });
+    await ffmpeg.load({ coreURL, wasmURL, classWorkerURL: workerURL });
 
     ffmpegInstance = {
         load: async () => { },
@@ -65,12 +73,61 @@ async function getFFmpeg(): Promise<FFmpegInstance> {
 }
 
 /**
+ * Pass an MP4 Blob through ffmpeg.wasm with `-c copy` and the h264_metadata
+ * bitstream filter to rewrite the SPS. No re-encode, no quality loss. Fixes
+ * the Resolve-incompatible SPS that Chromium's WebCodecs encoder emits
+ * (num_reorder_frames=2 with no B-frames, occasional duplicate sps_id=1).
+ */
+async function remuxMp4ForCompatibility(input: Blob): Promise<Blob> {
+    const ffmpeg = await getFFmpeg();
+    const inputName = `webcodecs_${Date.now()}.mp4`;
+    const outputName = `remuxed_${Date.now()}.mp4`;
+
+    const inputBytes = new Uint8Array(await input.arrayBuffer());
+    await ffmpeg.writeFile(inputName, inputBytes);
+
+    try {
+        // Re-encode through libx264 to guarantee Resolve-compatible SPS. We
+        // tried `-c copy -bsf:v h264_metadata=...` first, but the default
+        // @ffmpeg/core build doesn't ship the h264_metadata bitstream filter.
+        // -preset ultrafast keeps the time cost ~1s for typical short clips.
+        // -bf 0 forces zero B-frames so the SPS will encode num_reorder_frames=0.
+        await ffmpeg.exec([
+            '-i', inputName,
+            '-c:v', 'libx264',
+            '-preset', 'ultrafast',
+            '-crf', '18',
+            '-pix_fmt', 'yuv420p',
+            '-bf', '0',
+            '-movflags', '+faststart',
+            '-y',
+            outputName,
+        ]);
+
+        const data = await ffmpeg.readFile(outputName);
+        if (data.length === 0) {
+            throw new Error('FFmpeg remux produced empty output');
+        }
+
+        const buffer = new ArrayBuffer(data.length);
+        new Uint8Array(buffer).set(data);
+        return new Blob([buffer], { type: 'video/mp4' });
+    } catch (e) {
+        console.warn('[Encoder] MP4 remux failed, returning raw WebCodecs output:', e);
+        return input;
+    } finally {
+        try { await ffmpeg.deleteFile(inputName); } catch { /* ignore */ }
+        try { await ffmpeg.deleteFile(outputName); } catch { /* ignore */ }
+    }
+}
+
+/**
  * Wrapper interface for our encoders
  */
 export interface VideoEncoderWrapper extends VideoEncoderInterface {
     configure(options: VideoExportOptions, metadata: VideoMetadata): Promise<void>;
     addFrame(frame: ImageData, timestamp: number): Promise<void>;
-    finalize(): Promise<Blob>;
+    finalize(onRemuxStart?: () => void): Promise<Blob>;
     abort(): void;
 }
 
@@ -133,13 +190,17 @@ export class WebCodecsEncoderWrapper implements VideoEncoderWrapper {
         } else {
             const target = new Mp4ArrayBufferTarget();
             this.target = target;
+            // Intentionally omit `frameRate` here: passing it makes mp4-muxer set
+            // the track timescale equal to the frame rate (e.g. 1/24), which
+            // breaks sub-frame PTS precision and causes timing/seek issues in
+            // strict NLEs like DaVinci Resolve. Without it, the muxer uses a
+            // microsecond timescale derived from our chunk timestamps.
             this.muxer = new Mp4Muxer({
                 target,
                 video: {
                     codec: 'avc',
                     width,
                     height,
-                    frameRate: options.frameRate,
                 },
                 fastStart: 'in-memory',
                 firstTimestampBehavior: 'offset',
@@ -172,7 +233,11 @@ export class WebCodecsEncoderWrapper implements VideoEncoderWrapper {
             height,
             bitrateMode: 'quantizer',
             framerate: options.frameRate,
+            // 'realtime' suppresses B-frames. mp4-muxer doesn't accept a
+            // compositionTimeOffset from our output callback, so any B-frame
+            // would be muxed with DTS=PTS and produce a broken/short MP4.
             latencyMode: 'realtime',
+            avc: { format: 'avc' },
         };
 
         try {
@@ -197,6 +262,7 @@ export class WebCodecsEncoderWrapper implements VideoEncoderWrapper {
                 bitrate,
                 framerate: options.frameRate,
                 latencyMode: 'realtime',
+                avc: { format: 'avc' },
             };
 
             const support = await VideoEncoder.isConfigSupported(config);
@@ -291,10 +357,9 @@ export class WebCodecsEncoderWrapper implements VideoEncoderWrapper {
             duration: Math.round(frameDurationUs),
         });
 
-        // Encode the frame — flush after each to ensure the output callback fires
-        // before the next frame, keeping chunks in presentation order for the muxer.
-        // Keyframe every 15 frames — dithered patterns change unpredictably between
-        // frames so frequent keyframes prevent progressive quality degradation.
+        // Keyframe every 15 frames — dithered patterns change unpredictably
+        // between frames so frequent keyframes prevent progressive quality
+        // degradation.
         const keyFrame = this.frameIndex % 15 === 0;
         if (this._useQuantizer) {
             const quantizer = this.qualityToQuantizer(this.options.quality);
@@ -312,14 +377,15 @@ export class WebCodecsEncoderWrapper implements VideoEncoderWrapper {
         }
         videoFrame.close();
 
-        // Flush ensures the encoded chunk is delivered to the muxer before we
-        // encode the next frame. This prevents out-of-order delivery.
+        // Per-frame flush acts as backpressure: WebCodecs in realtime mode
+        // drops frames when fed faster than its processing rate. Awaiting flush
+        // gates input to the encoder's actual throughput so no frames are lost.
         await this.encoder.flush();
 
         this.frameIndex++;
     }
 
-    async finalize(): Promise<Blob> {
+    async finalize(onRemuxStart?: () => void): Promise<Blob> {
         if (!this.encoder || !this.options || !this.muxer || !this.target) {
             throw new Error('Encoder not configured');
         }
@@ -340,7 +406,20 @@ export class WebCodecsEncoderWrapper implements VideoEncoderWrapper {
         this.muxer.finalize();
 
         const mimeType = this.options.format === 'webm' ? 'video/webm' : 'video/mp4';
-        return new Blob([this.target.buffer], { type: mimeType });
+        const rawBlob = new Blob([this.target.buffer], { type: mimeType });
+
+        // MP4-only: remux through ffmpeg.wasm to normalize the H.264 SPS that
+        // Chromium's WebCodecs encoder produces. Chromium emits SPS with
+        // num_reorder_frames=2 (declaring B-frame reorder buffering) even when
+        // no B-frames exist, and occasionally a duplicate SPS with id=1.
+        // DaVinci Resolve trusts the SPS and stutters; players like VLC don't.
+        // `-c copy` keeps the WebCodecs encode (no quality loss); the
+        // h264_metadata bitstream filter rewrites the SPS in place.
+        if (this.options.format === 'mp4') {
+            onRemuxStart?.();
+            return await remuxMp4ForCompatibility(rawBlob);
+        }
+        return rawBlob;
     }
 
     abort(): void {
@@ -393,7 +472,7 @@ export class FFmpegEncoderWrapper implements VideoEncoderWrapper {
         this.frameIndex++;
     }
 
-    async finalize(): Promise<Blob> {
+    async finalize(_onRemuxStart?: () => void): Promise<Blob> {
         if (!this.ffmpeg || !this.options || !this.metadata) {
             throw new Error('Encoder not configured');
         }

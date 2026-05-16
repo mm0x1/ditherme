@@ -8,3 +8,4 @@ build/
 .ai/
 debug/
 wasm/libdither/
+scratch.md

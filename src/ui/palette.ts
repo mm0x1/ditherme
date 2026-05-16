@@ -209,12 +209,11 @@ export function initPalette(container: HTMLElement): void {
             // Handle different sources
             switch (source) {
                 case 'builtin':
-                    // Load selected builtin palette
                     if (builtinPaletteSelect) {
                         const paletteId = builtinPaletteSelect.value as BuiltInPalette;
                         const palette = getPalette(paletteId);
                         if (palette) {
-                            app.setState({ palette });
+                            app.setState({ palette, customPalette: null });
                         }
                     }
                     break;
@@ -259,7 +258,7 @@ export function initPalette(container: HTMLElement): void {
             const paletteId = builtinPaletteSelect.value as BuiltInPalette;
             const palette = getPalette(paletteId);
             if (palette) {
-                app.setState({ palette }, true); // Save history for undo
+                app.setState({ palette, customPalette: null }, true);
             }
         });
     }

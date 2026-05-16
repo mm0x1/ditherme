@@ -50,8 +50,10 @@ app.on('statechange', (e) => { /* e.detail.changes, e.detail.previousState */ })
 
 ### Video Processing (`src/engine/video/`)
 
-- **WebCodecs** API used in Chrome/Edge; **FFmpeg.wasm** fallback for Safari
-- Frames are extracted, cached (hash-based), dithered via worker pool, then re-encoded
+- **Extraction**: WebCodecs decoder for all browsers that support it; FFmpeg.wasm fallback for others. Source frames are indexed by a CTS→index map built from actual mp4box sample timestamps — do NOT use frame-rate-based index calculation (breaks on VFR video).
+- **Dithering**: Worker pool (`src/workers/worker-pool.ts`) processes frames in parallel. Dithered frames are cached in `FrameCache` keyed by settings hash.
+- **Encoding**: Separate capability detection for encoder vs decoder (`getEncoderCapability()` vs `getVideoCapability()`). Safari's WebCodecs encoder silently stalls — detected via `bitrateMode: 'quantizer'` TypeError, routes to FFmpeg.wasm encoder. MP4 output is remuxed through FFmpeg to fix Chromium's SPS for DaVinci Resolve compatibility.
+- **Playback**: Timeline playback is gated on frame render completion (`waitingForRender` flag). The viewport calls `timeline.notifyFrameRendered()` after each frame is drawn. Prefetch is limited to 3 frames ahead to avoid flooding the worker queue.
 
 ### Electron (`electron/`)
 

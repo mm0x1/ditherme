@@ -1,5 +1,6 @@
 import { app, shouldUpdateViewport, shouldInvalidateVideoCache } from '../app.ts';
 import { getVideoManager } from '../engine/video/video-manager.ts';
+import { getTimeline } from './video/timeline.ts';
 
 /**
  * Debounce delay for video settings changes (ms)
@@ -188,6 +189,25 @@ export function initViewport(container: HTMLElement): ViewportControls {
                 currentVideoFrame = imageData;
                 lastRenderedFrameIndex = frameIndex;
                 renderImage(currentVideoFrame, app.getState());
+
+                // Tell the timeline this frame is on screen so it can advance
+                const timeline = getTimeline();
+                if (timeline) {
+                    timeline.notifyFrameRendered(frameIndex);
+                }
+
+                // Prefetch a small window of upcoming frames. Only queue
+                // frames not already in cache to avoid flooding the worker
+                // pool and blocking the next real frame request.
+                const updatedState = app.getState();
+                if (updatedState.isPlaying && updatedState.videoMetadata) {
+                    const totalFrames = updatedState.videoMetadata.frameCount;
+                    const lookahead = 3;
+                    const prefetchEnd = Math.min(totalFrames - 1, frameIndex + lookahead);
+                    for (let p = frameIndex + 1; p <= prefetchEnd; p++) {
+                        getVideoManager().getDitheredFrame(p, updatedState).catch(() => {});
+                    }
+                }
             }
         } catch (error) {
             console.error('[Viewport] Error loading video frame:', error);
@@ -396,15 +416,16 @@ export function initViewport(container: HTMLElement): ViewportControls {
                 fitToView();
                 break;
             case ' ':
-                // Toggle show original while space is held
-                e.preventDefault();
-                app.setState({ showOriginal: true });
+                if (!app.getState().isVideoMode) {
+                    e.preventDefault();
+                    app.setState({ showOriginal: true });
+                }
                 break;
         }
     });
 
     document.addEventListener('keyup', (e: KeyboardEvent) => {
-        if (e.key === ' ') {
+        if (e.key === ' ' && !app.getState().isVideoMode) {
             app.setState({ showOriginal: false });
         }
     });

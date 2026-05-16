@@ -22,6 +22,7 @@ export interface TimelineControls {
     pause(): void;
     toggle(): void;
     isPlaying(): boolean;
+    notifyFrameRendered(index: number): void;
     onFrameChange?: (index: number) => void;
     destroy(): void;
 }
@@ -53,6 +54,7 @@ export function initTimeline(container: HTMLElement): TimelineControls {
     let playing = false;
     let animationId: number | null = null;
     let lastFrameTime = 0;
+    let waitingForRender = false;
     let onFrameChangeCallback: ((index: number) => void) | undefined;
 
     // Create timeline elements
@@ -146,10 +148,18 @@ export function initTimeline(container: HTMLElement): TimelineControls {
     }
 
     /**
-     * Playback loop
+     * Playback loop — gated on frame render completion.
+     * We don't advance to the next frame until the viewport confirms it
+     * rendered the current one. This prevents the timeline from running
+     * ahead of the rendering pipeline.
      */
     function playbackLoop(time: number): void {
         if (!playing || !metadata) return;
+
+        if (waitingForRender) {
+            animationId = requestAnimationFrame(playbackLoop);
+            return;
+        }
 
         const frameDuration = 1000 / metadata.frameRate;
         const elapsed = time - lastFrameTime;
@@ -157,10 +167,9 @@ export function initTimeline(container: HTMLElement): TimelineControls {
         if (elapsed >= frameDuration) {
             lastFrameTime = time - (elapsed % frameDuration);
 
-            // Advance frame
             const nextFrame = currentFrame + 1;
+            waitingForRender = true;
             if (nextFrame >= metadata.frameCount) {
-                // Loop back to start
                 setFrameInternal(0);
             } else {
                 setFrameInternal(nextFrame);
@@ -177,6 +186,7 @@ export function initTimeline(container: HTMLElement): TimelineControls {
         if (playing || !metadata) return;
 
         playing = true;
+        waitingForRender = false;
         lastFrameTime = performance.now();
         app.setState({ isPlaying: true });
         app.emit('videoplaystate', { playing: true });
@@ -386,6 +396,10 @@ export function initTimeline(container: HTMLElement): TimelineControls {
 
         isPlaying(): boolean {
             return playing;
+        },
+
+        notifyFrameRendered(_index: number): void {
+            waitingForRender = false;
         },
 
         set onFrameChange(callback: ((index: number) => void) | undefined) {

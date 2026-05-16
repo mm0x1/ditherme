@@ -145,3 +145,46 @@ export function shouldUseWebCodecs(format: 'mp4' | 'webm' | 'gif'): boolean {
     // MP4 and WebM can use WebCodecs if available
     return cachedCapability === 'webcodecs';
 }
+
+// Separate cache for encoder capability — decoder support does not imply encoder reliability
+let cachedEncoderCapability: VideoCapability | null = null;
+
+/**
+ * Detect whether the WebCodecs VideoEncoder is reliable enough for multi-frame export.
+ *
+ * Spec-compliant browsers (Chrome, Firefox) return {supported: false} when a
+ * VideoEncoderConfig option is unrecognised. Safari throws TypeError instead,
+ * which is a reliable signal that its WebCodecs encoder implementation is
+ * limited and will silently stall mid-export on longer/higher-resolution videos.
+ */
+async function detectEncoderCapability(): Promise<VideoCapability> {
+    if (!hasWebCodecsSupport()) return 'ffmpeg';
+
+    try {
+        await VideoEncoder.isConfigSupported({
+            codec: 'avc1.64001E',
+            width: 1920,
+            height: 1080,
+            bitrateMode: 'quantizer' as VideoEncoderBitrateMode,
+            framerate: 30,
+            latencyMode: 'realtime',
+            avc: { format: 'avc' },
+        });
+        return 'webcodecs';
+    } catch {
+        // Safari throws TypeError here — route export to FFmpeg
+        return 'ffmpeg';
+    }
+}
+
+/**
+ * Get the encoder capability (cached). Use this for export decisions;
+ * use getVideoCapability() for extraction/decoding decisions.
+ */
+export async function getEncoderCapability(): Promise<VideoCapability> {
+    if (cachedEncoderCapability === null) {
+        cachedEncoderCapability = await detectEncoderCapability();
+        console.log(`[Video] Detected encoder capability: ${cachedEncoderCapability}`);
+    }
+    return cachedEncoderCapability;
+}

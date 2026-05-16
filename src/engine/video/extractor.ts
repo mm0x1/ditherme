@@ -75,15 +75,17 @@ export class WebCodecsExtractor implements FrameExtractor {
     private samples: MP4Sample[] = [];
     private pendingFrames: Map<number, (frame: VideoFrame) => void> = new Map();
     private decodedFrames: Map<number, VideoFrame> = new Map();
-    private minTimestamp = Infinity;
     private allSamplesQueued = false;
     private flushPromise: Promise<void> | null = null;
+    // Map from CTS (µs) → presentation-order index, built from actual
+    // sample timestamps to handle VFR video correctly.
+    private ctsToIndex: Map<number, number> = new Map();
 
     async open(file: File): Promise<VideoMetadata> {
         this._file = file;
         this.samples = [];
         this.decodedFrames.clear();
-        this.minTimestamp = Infinity;
+        this.ctsToIndex.clear();
         this.allSamplesQueued = false;
         this.flushPromise = null;
 
@@ -128,7 +130,14 @@ export class WebCodecsExtractor implements FrameExtractor {
 
             mp4boxFile.onSamples = (_id: number, _user: unknown, samples: MP4Sample[]) => {
                 this.samples.push(...samples);
-                // Decode pending samples
+                // Collect CTS values for the CTS→index map. Round to
+                // integer µs to match WebCodecs timestamp precision.
+                for (const s of samples) {
+                    const cts = Math.round(s.cts * 1_000_000 / s.timescale);
+                    if (!this.ctsToIndex.has(cts)) {
+                        this.ctsToIndex.set(cts, -1);
+                    }
+                }
                 this.decodePendingSamples();
             };
 
@@ -143,12 +152,24 @@ export class WebCodecsExtractor implements FrameExtractor {
 
     private async readFileToMp4Box(file: File, mp4boxFile: MP4BoxFile): Promise<void> {
         const arrayBuffer = await file.arrayBuffer();
-        // mp4box expects the buffer to have a fileStart property
         (arrayBuffer as ArrayBufferWithFileStart).fileStart = 0;
         mp4boxFile.appendBuffer(arrayBuffer);
         mp4boxFile.flush();
-        // After flush, mp4box has delivered every sample via onSamples
+        // After flush, mp4box has delivered every sample via onSamples.
+        // Build the CTS→index map by sorting unique CTS values. This
+        // correctly handles VFR video where frame-rate-based index
+        // calculation produces duplicate and gap indices.
+        this.buildCTSIndexMap();
         this.allSamplesQueued = true;
+    }
+
+    private buildCTSIndexMap(): void {
+        const ctsList = Array.from(this.ctsToIndex.keys()).sort((a, b) => a - b);
+        this.ctsToIndex.clear();
+        for (let i = 0; i < ctsList.length; i++) {
+            this.ctsToIndex.set(ctsList[i], i);
+        }
+        console.debug(`[Extractor] Built CTS→index map: ${ctsList.length} unique timestamps`);
     }
 
     private initDecoder(track: MP4VideoTrack): void {
@@ -193,21 +214,26 @@ export class WebCodecsExtractor implements FrameExtractor {
     private handleDecodedFrame(frame: globalThis.VideoFrame): void {
         const timestamp = frame.timestamp ?? 0;
 
-        // Track the minimum timestamp (the first I-frame's CTS, used as base)
-        if (timestamp < this.minTimestamp) {
-            this.minTimestamp = timestamp;
+        // Look up the presentation-order index from the CTS map. This
+        // handles VFR video correctly — frame-rate-based division produces
+        // duplicate/gap indices when timestamps aren't uniformly spaced.
+        let index = this.ctsToIndex.get(timestamp);
+        if (index === undefined) {
+            // Fallback for timestamps not in the map (shouldn't happen, but
+            // be defensive): find the closest CTS entry.
+            let bestDist = Infinity;
+            for (const [cts, idx] of this.ctsToIndex) {
+                const dist = Math.abs(cts - timestamp);
+                if (dist < bestDist) {
+                    bestDist = dist;
+                    index = idx;
+                }
+            }
+            index = index ?? 0;
         }
-
-        // Compute presentation-order index from timestamp instead of using a
-        // sequential counter. The WebCodecs decoder outputs frames in decode
-        // order (I, P, B, B, B, ...) which differs from presentation order
-        // when the source has B-frames.
-        const frameDurationUs = 1_000_000 / this.metadata!.frameRate;
-        const index = Math.round((timestamp - this.minTimestamp) / frameDurationUs);
 
         console.debug(`[Extractor] Decoded frame: index=${index}, timestamp=${timestamp}µs (${(timestamp/1000).toFixed(1)}ms), size=${frame.displayWidth}x${frame.displayHeight}`);
 
-        // Convert VideoFrame to ImageData
         const canvas = new OffscreenCanvas(frame.displayWidth, frame.displayHeight);
         const ctx = canvas.getContext('2d')!;
         ctx.drawImage(frame, 0, 0);
@@ -217,7 +243,7 @@ export class WebCodecsExtractor implements FrameExtractor {
 
         const videoFrame: VideoFrame = {
             index,
-            timestamp: timestamp / 1000, // Convert to ms
+            timestamp: timestamp / 1000,
             imageData,
         };
 
@@ -229,6 +255,9 @@ export class WebCodecsExtractor implements FrameExtractor {
             resolver(videoFrame);
             this.pendingFrames.delete(index);
         }
+
+        // Continue feeding the decoder now that the queue has drained by one
+        this.decodePendingSamples();
     }
 
     private decodePendingSamples(): void {
@@ -237,13 +266,11 @@ export class WebCodecsExtractor implements FrameExtractor {
         let fed = 0;
         while (this.samples.length > 0 && this.decoder.decodeQueueSize < 10) {
             const sample = this.samples.shift()!;
-            const cts = sample.cts * 1_000_000 / sample.timescale;
-            const dts = sample.dts !== undefined ? sample.dts * 1_000_000 / sample.timescale : 'N/A';
-            console.debug(`[Extractor] Feed sample: cts=${cts}µs, dts=${dts}, sync=${sample.is_sync}, size=${sample.data.byteLength}, remaining=${this.samples.length}`);
+            const cts = Math.round(sample.cts * 1_000_000 / sample.timescale);
             const chunk = new EncodedVideoChunk({
                 type: sample.is_sync ? 'key' : 'delta',
                 timestamp: cts,
-                duration: sample.duration * 1_000_000 / sample.timescale,
+                duration: Math.round(sample.duration * 1_000_000 / sample.timescale),
                 data: sample.data,
             });
             this.decoder.decode(chunk);
@@ -252,22 +279,49 @@ export class WebCodecsExtractor implements FrameExtractor {
         if (fed > 0) {
             console.debug(`[Extractor] Fed ${fed} samples, decodeQueueSize=${this.decoder.decodeQueueSize}, remaining=${this.samples.length}`);
         }
+
+        // If all samples have been fed, flush to drain any tail frames
+        this.maybeFlushDecoder();
     }
 
     async getFrame(index: number): Promise<VideoFrame> {
-        // Check if already decoded
         const cached = this.decodedFrames.get(index);
         if (cached) return cached;
 
-        // Wait for frame to be decoded
-        return new Promise((resolve) => {
+        return new Promise((resolve, reject) => {
             this.pendingFrames.set(index, resolve);
-            // Trigger more decoding
             this.decodePendingSamples();
-            // If we've fed every sample but the requested frame still isn't out,
-            // the decoder is holding tail frames in its reorder buffer.
-            // Flush once to drain them.
-            this.maybeFlushDecoder();
+
+            // Safety timeout — if the decoder never produces this frame
+            // (e.g. timestamp rounding causes an index gap), resolve with
+            // the nearest available frame rather than hanging forever.
+            setTimeout(() => {
+                if (!this.pendingFrames.has(index)) return;
+                this.pendingFrames.delete(index);
+
+                // Find nearest decoded frame
+                const cached = this.decodedFrames.get(index);
+                if (cached) { resolve(cached); return; }
+
+                let best: VideoFrame | null = null;
+                let bestDist = Infinity;
+                for (const [idx, frame] of this.decodedFrames) {
+                    const dist = Math.abs(idx - index);
+                    if (dist < bestDist) {
+                        bestDist = dist;
+                        best = frame;
+                    }
+                }
+
+                if (best) {
+                    console.warn(`[Extractor] Frame ${index} timed out, using nearest frame ${best.index}`);
+                    // Cache the fallback so subsequent requests don't timeout again
+                    this.decodedFrames.set(index, best);
+                    resolve(best);
+                } else {
+                    reject(new Error(`Frame ${index} timed out and no fallback available`));
+                }
+            }, 10_000);
         });
     }
 
@@ -276,7 +330,27 @@ export class WebCodecsExtractor implements FrameExtractor {
         if (!this.allSamplesQueued || this.samples.length > 0) return;
         if (this.pendingFrames.size === 0) return;
         console.debug('[Extractor] All samples fed, flushing decoder to drain tail frames');
-        this.flushPromise = this.decoder.flush().catch((e) => {
+        this.flushPromise = this.decoder.flush().then(() => {
+            // After flush, check if there are still pending frames that
+            // were never produced. Resolve them with nearest neighbours.
+            for (const [index, resolver] of this.pendingFrames) {
+                let best: VideoFrame | null = null;
+                let bestDist = Infinity;
+                for (const [idx, frame] of this.decodedFrames) {
+                    const dist = Math.abs(idx - index);
+                    if (dist < bestDist) {
+                        bestDist = dist;
+                        best = frame;
+                    }
+                }
+                if (best) {
+                    console.warn(`[Extractor] Post-flush: frame ${index} never decoded, using frame ${best.index}`);
+                    this.decodedFrames.set(index, best);
+                    resolver(best);
+                }
+            }
+            this.pendingFrames.clear();
+        }).catch((e) => {
             console.error('[Extractor] Decoder flush error:', e);
         });
     }
@@ -302,7 +376,7 @@ export class WebCodecsExtractor implements FrameExtractor {
         this.samples = [];
         this.decodedFrames.clear();
         this.pendingFrames.clear();
-        this.minTimestamp = Infinity;
+        this.ctsToIndex.clear();
         this.allSamplesQueued = false;
         this.flushPromise = null;
         this._file = null;

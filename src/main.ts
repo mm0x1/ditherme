@@ -489,8 +489,13 @@ async function handleVideoExport(): Promise<void> {
     const progressModal = getProgressModal();
     const videoManager = getVideoManager();
 
+    let cancelled = false;
+
     progressModal.onCancel = () => {
+        cancelled = true;
         videoManager.cancelExport();
+        progressModal.hide();
+        setStatus('Export cancelled');
     };
 
     progressModal.show('Exporting Video...');
@@ -500,9 +505,13 @@ async function handleVideoExport(): Promise<void> {
             result.options,
             state,
             (progress) => {
-                progressModal.updateProgress(progress);
+                if (!cancelled) {
+                    progressModal.updateProgress(progress);
+                }
             }
         );
+
+        if (cancelled) return;
 
         progressModal.hide();
 
@@ -523,6 +532,7 @@ async function handleVideoExport(): Promise<void> {
 
         setStatus(`Exported: ${fileName}`);
     } catch (error) {
+        if (cancelled) return;
         if ((error as Error).message === 'Export cancelled') {
             progressModal.hide();
             setStatus('Export cancelled');

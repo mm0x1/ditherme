@@ -3,7 +3,7 @@
  */
 
 import type { VideoMetadata, VideoExportOptions, VideoEncoderInterface } from '../../types/video.ts';
-import { shouldUseWebCodecs } from './capability.ts';
+import { getEncoderCapability } from './capability.ts';
 import { Muxer as Mp4Muxer, ArrayBufferTarget as Mp4ArrayBufferTarget } from 'mp4-muxer';
 import { Muxer as WebmMuxer, ArrayBufferTarget as WebmArrayBufferTarget } from 'webm-muxer';
 
@@ -609,8 +609,12 @@ export async function createEncoder(format: VideoExportOptions['format']): Promi
         return new FFmpegEncoderWrapper();
     }
 
-    // Check if WebCodecs is available
-    if (shouldUseWebCodecs(format)) {
+    // Use a separate encoder capability check (distinct from decoder capability).
+    // Safari's WebCodecs decoder works fine but its encoder silently stalls on
+    // long exports — getEncoderCapability() detects this via the TypeError that
+    // Safari throws on isConfigSupported({ bitrateMode: 'quantizer' }).
+    const encoderCap = await getEncoderCapability();
+    if (encoderCap === 'webcodecs') {
         try {
             return new WebCodecsEncoderWrapper();
         } catch (e) {

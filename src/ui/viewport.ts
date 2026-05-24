@@ -307,17 +307,27 @@ export function initViewport(container: HTMLElement): ViewportControls {
      */
     function fitToView(): void {
         const state = app.getState();
-        const image = state.sourceImage;
 
-        if (!image) return;
+        let imageWidth: number;
+        let imageHeight: number;
+
+        if (state.sourceImage) {
+            imageWidth = state.sourceImage.width;
+            imageHeight = state.sourceImage.height;
+        } else if (state.videoMetadata) {
+            imageWidth = state.videoMetadata.width;
+            imageHeight = state.videoMetadata.height;
+        } else {
+            return;
+        }
 
         const containerWidth = container.clientWidth;
         const containerHeight = container.clientHeight;
-        const padding = 40; // Some padding around the image
+        const padding = 40;
 
-        const scaleX = (containerWidth - padding * 2) / image.width;
-        const scaleY = (containerHeight - padding * 2) / image.height;
-        const scale = Math.min(scaleX, scaleY, 1); // Don't scale up beyond 100%
+        const scaleX = (containerWidth - padding * 2) / imageWidth;
+        const scaleY = (containerHeight - padding * 2) / imageHeight;
+        const scale = Math.min(scaleX, scaleY, 1);
 
         app.setState({
             zoom: scale,

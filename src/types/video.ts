@@ -127,7 +127,7 @@ export function isSupportedVideoType(mimeType: string): boolean {
 /**
  * Maximum video duration in seconds
  */
-export const MAX_VIDEO_DURATION = 30;
+export const MAX_VIDEO_DURATION = 45;
 
 /**
  * Maximum video dimension (width or height)

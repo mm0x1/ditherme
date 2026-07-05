@@ -10,7 +10,7 @@ import type { ImageEffect, ImageEffectParams } from '../types/image-effect.ts';
 import { applyImageEffect } from '../engine/image-effects/index.ts';
 import { applyAdjustments, hasAdjustments } from '../engine/adjustments.ts';
 import { ditherAsync, initDitherWasm } from '../algorithms/index.ts';
-import { composite, buildEffectLayers } from '../engine/compositor.ts';
+import { composite, buildEffectLayers, applyAlphaMask } from '../engine/compositor.ts';
 import { downscaleImage, upscaleImage } from '../engine/scaling.ts';
 import { reducePalette } from '../engine/palette-utils.ts';
 
@@ -105,6 +105,9 @@ class VideoProcessor implements VideoProcessorAPI {
             result = upscaleImage(result, originalWidth, originalHeight);
         }
 
+        // Capture the dither's source alpha before effects rebuild pixels opaquely.
+        const ditheredAlpha = result;
+
         // Step 6: Apply post-processing effect
         if (postEffect !== 'none') {
             let brightDither: ImageData | null = null;
@@ -131,6 +134,12 @@ class VideoProcessor implements VideoProcessorAPI {
 
         // Step 7: Apply image effect
         result = await applyImageEffect(result, imageEffect, imageEffectParams);
+
+        // Re-stamp the dither's source alpha so transparency survives the effects
+        // (no-op when no effect ran, since `result` still references the dither).
+        if (postEffect !== 'none' || imageEffect !== 'none') {
+            applyAlphaMask(result, ditheredAlpha);
+        }
 
         return result;
     }

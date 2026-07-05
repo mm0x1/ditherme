@@ -97,6 +97,22 @@ export function buildEffectLayers(
 }
 
 /**
+ * Copy the alpha channel from `mask` onto `target` in place.
+ *
+ * Effects (pin-light compositing, light/chroma image effects) rebuild the pixel
+ * buffer with a hardcoded opaque alpha, discarding source transparency. The
+ * dithered result carries the correct source alpha, so we re-stamp it as the
+ * final step of the pipeline. `target` and `mask` must share dimensions.
+ */
+export function applyAlphaMask(target: ImageData, mask: ImageData): void {
+    const t = target.data;
+    const m = mask.data;
+    for (let i = 3; i < t.length; i += 4) {
+        t[i] = m[i];
+    }
+}
+
+/**
  * Create a solid-color ImageData fill from a hex color string.
  */
 export function createSolidFill(hex: string, width: number, height: number): ImageData {

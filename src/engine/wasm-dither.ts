@@ -275,7 +275,8 @@ function monoOutputToImageData(
     outPtr: number,
     width: number,
     height: number,
-    palette: Palette
+    palette: Palette,
+    imageData: ImageData
 ): ImageData {
     const output = new ImageData(width, height);
     const pixelCount = width * height;
@@ -315,7 +316,7 @@ function monoOutputToImageData(
         output.data[outIdx] = color.r;
         output.data[outIdx + 1] = color.g;
         output.data[outIdx + 2] = color.b;
-        output.data[outIdx + 3] = 255;
+        output.data[outIdx + 3] = imageData.data[outIdx + 3]; // Preserve source alpha
     }
 
     return output;
@@ -382,7 +383,8 @@ function indexOutputToImageData(
     outPtr: number,
     width: number,
     height: number,
-    palette: Palette
+    palette: Palette,
+    imageData: ImageData
 ): ImageData {
     const output = new ImageData(width, height);
     const pixelCount = width * height;
@@ -397,7 +399,7 @@ function indexOutputToImageData(
             output.data[outIdx] = color.r;
             output.data[outIdx + 1] = color.g;
             output.data[outIdx + 2] = color.b;
-            output.data[outIdx + 3] = 255;
+            output.data[outIdx + 3] = imageData.data[outIdx + 3]; // Preserve source alpha
         } else {
             // Transparent or invalid index
             output.data[outIdx] = 0;
@@ -494,7 +496,7 @@ async function wasmDitherColor(
             if (needsFree) wasm._OrderedDitherMatrix_free(matrixPtr);
         }
 
-        return indexOutputToImageData(wasm, outPtr, width, height, palette);
+        return indexOutputToImageData(wasm, outPtr, width, height, palette, imageData);
 
     } finally {
         wasm._ColorImage_free(imgPtr);
@@ -806,7 +808,7 @@ export async function wasmDitherMono(
         }
 
         // Convert output to ImageData
-        return monoOutputToImageData(wasm, outPtr, width, height, palette);
+        return monoOutputToImageData(wasm, outPtr, width, height, palette, imageData);
 
     } finally {
         // Clean up

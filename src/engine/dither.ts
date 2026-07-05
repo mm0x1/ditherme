@@ -4,7 +4,7 @@ import type { AppState } from '../types/state.ts';
 import { applyAdjustments, hasAdjustments } from './adjustments.ts';
 import { ditherAsync, initDitherWasm } from '../algorithms/index.ts';
 import { imageCache } from './image-cache.ts';
-import { composite, buildEffectLayers } from './compositor.ts';
+import { composite, buildEffectLayers, applyAlphaMask } from './compositor.ts';
 import { applyImageEffect } from './image-effects/index.ts';
 import { downscaleImage, upscaleImage } from './scaling.ts';
 import { reducePalette } from './palette-utils.ts';
@@ -130,6 +130,12 @@ export function triggerDither(): void {
             const postProcessed = await applyPostEffect(result, state);
             const finalImage = await applyImageEffect(postProcessed, state.imageEffect, state.imageEffectParams);
 
+            // Effects rebuild pixels with opaque alpha; re-stamp the dither's
+            // source alpha so transparency survives (no-op when no effect ran).
+            if (state.postEffect !== 'none' || state.imageEffect !== 'none') {
+                applyAlphaMask(finalImage, result);
+            }
+
             // Cache the result
             imageCache.set(state, finalImage);
 
@@ -200,6 +206,12 @@ export async function forceDither(): Promise<void> {
 
         const postProcessed = await applyPostEffect(result, state);
         const finalImage = await applyImageEffect(postProcessed, state.imageEffect, state.imageEffectParams);
+
+        // Effects rebuild pixels with opaque alpha; re-stamp the dither's
+        // source alpha so transparency survives (no-op when no effect ran).
+        if (state.postEffect !== 'none' || state.imageEffect !== 'none') {
+            applyAlphaMask(finalImage, result);
+        }
 
         app.setState({
             ditheredImage: finalImage,

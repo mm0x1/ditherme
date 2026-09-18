@@ -22,12 +22,6 @@ interface FileResult {
     data: Uint8Array;
 }
 
-// API request handler type
-interface APIRequestHandler {
-    id: number;
-    request: unknown;
-}
-
 // Expose protected methods that allow the renderer to interact with main process
 contextBridge.exposeInMainWorld('electronAPI', {
     // Platform detection
@@ -36,21 +30,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
     // App info
     getVersion: () => ipcRenderer.invoke('get-app-version'),
-    getWasmPath: () => ipcRenderer.invoke('get-wasm-path'),
+    getWasmURL: () => ipcRenderer.invoke('get-wasm-url'),
 
     // File dialogs
     openFileDialog: (options?: OpenFileOptions): Promise<FileResult[] | null> =>
         ipcRenderer.invoke('dialog:openFile', options),
 
-    saveFileDialog: (options?: SaveFileOptions): Promise<string | null> =>
-        ipcRenderer.invoke('dialog:saveFile', options),
-
-    // File operations
-    readFile: (path: string): Promise<Uint8Array> =>
-        ipcRenderer.invoke('file:read', path),
-
-    writeFile: (path: string, data: Uint8Array): Promise<void> =>
-        ipcRenderer.invoke('file:write', path, data),
+    saveFile: (data: Uint8Array, options?: SaveFileOptions): Promise<boolean> =>
+        ipcRenderer.invoke('file:save', data, options),
 
     // Menu actions
     onMenuAction: (callback: (action: string) => void) => {
@@ -80,31 +67,4 @@ contextBridge.exposeInMainWorld('electronAPI', {
     // DevTools
     toggleDevTools: () => ipcRenderer.send('toggle-devtools'),
 
-    // API Server
-    getAPIServerStatus: (): Promise<{ running: boolean; port: number }> =>
-        ipcRenderer.invoke('api-server-status'),
-
-    startAPIServer: (config: { port: number; bindAddress: string; authEnabled: boolean; authToken: string | null }): Promise<{ success: boolean; error?: string }> =>
-        ipcRenderer.invoke('api-server-start', config),
-
-    stopAPIServer: (): Promise<{ success: boolean }> =>
-        ipcRenderer.invoke('api-server-stop'),
-
-    // API request handling (main process forwards HTTP requests to renderer)
-    onAPIRequest: (callback: (data: APIRequestHandler) => void) => {
-        const listener = (_event: IpcRendererEvent, data: APIRequestHandler) => callback(data);
-        ipcRenderer.on('api-request', listener);
-        return () => ipcRenderer.removeListener('api-request', listener);
-    },
-
-    sendAPIResponse: (id: number, response: unknown, error?: string) => {
-        ipcRenderer.send('api-response', { id, response, error });
-    },
-
-    // API server status change events
-    onAPIServerStatusChanged: (callback: (status: { running: boolean; port: number }) => void) => {
-        const listener = (_event: IpcRendererEvent, status: { running: boolean; port: number }) => callback(status);
-        ipcRenderer.on('api-server-status-changed', listener);
-        return () => ipcRenderer.removeListener('api-server-status-changed', listener);
-    }
 });

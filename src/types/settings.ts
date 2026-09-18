@@ -46,7 +46,7 @@ export interface UserSettings {
     recentAlgorithms: string[];
     maxRecentItems: number;
 
-    // API settings
+    // Dormant API settings retained for the parked scripting API implementation.
     apiEnabled: boolean;
     apiPort: number;
     apiBindAddress: string;
@@ -91,8 +91,8 @@ export const DEFAULT_SETTINGS: UserSettings = {
     defaultExportPreset: 'web-png',
     recentAlgorithms: [],
     maxRecentItems: 10,
-    // API defaults
-    apiEnabled: true,
+    // API defaults (the scripting API is disabled in the alpha release)
+    apiEnabled: false,
     apiPort: 7842,
     apiBindAddress: '127.0.0.1',
     apiAuthEnabled: false,

@@ -23,23 +23,6 @@ interface UpdateInfo {
     version: string;
 }
 
-interface APIServerConfig {
-    port: number;
-    bindAddress: string;
-    authEnabled: boolean;
-    authToken: string | null;
-}
-
-interface APIServerStatus {
-    running: boolean;
-    port: number;
-}
-
-interface APIRequestData {
-    id: number;
-    request: unknown;
-}
-
 /**
  * Electron API exposed to renderer via contextBridge
  */
@@ -50,15 +33,11 @@ interface ElectronAPI {
 
     // App info
     getVersion: () => Promise<string>;
-    getWasmPath: () => Promise<string>;
+    getWasmURL: () => Promise<string>;
 
     // File dialogs
     openFileDialog: (options?: OpenFileOptions) => Promise<FileResult[] | null>;
-    saveFileDialog: (options?: SaveFileOptions) => Promise<string | null>;
-
-    // File operations
-    readFile: (path: string) => Promise<Uint8Array>;
-    writeFile: (path: string, data: Uint8Array) => Promise<void>;
+    saveFile: (data: Uint8Array, options?: SaveFileOptions) => Promise<boolean>;
 
     // Menu actions
     onMenuAction: (callback: (action: string) => void) => () => void;
@@ -74,13 +53,6 @@ interface ElectronAPI {
     // DevTools
     toggleDevTools: () => void;
 
-    // API Server
-    getAPIServerStatus: () => Promise<APIServerStatus>;
-    startAPIServer: (config: APIServerConfig) => Promise<{ success: boolean; error?: string }>;
-    stopAPIServer: () => Promise<{ success: boolean }>;
-    onAPIRequest: (callback: (data: APIRequestData) => void) => () => void;
-    sendAPIResponse: (id: number, response: unknown, error?: string) => void;
-    onAPIServerStatusChanged: (callback: (status: APIServerStatus) => void) => () => void;
 }
 
 declare global {
@@ -94,8 +66,5 @@ export type {
     OpenFileOptions,
     SaveFileOptions,
     FileResult,
-    UpdateInfo,
-    APIServerConfig,
-    APIServerStatus,
-    APIRequestData
+    UpdateInfo
 };

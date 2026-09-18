@@ -2,6 +2,7 @@ import { app } from '../app.ts';
 import { isSupportedVideoType, MAX_VIDEO_DURATION } from '../types/video.ts';
 import { getVideoManager } from './video/video-manager.ts';
 import { getTimeline } from '../ui/video/timeline.ts';
+import { isElectron, saveFile as saveFileWithDialog } from '../utils/electron-bridge.ts';
 
 /**
  * Supported image MIME types
@@ -224,16 +225,30 @@ export async function downloadImage(
     format: 'image/png' | 'image/jpeg' | 'image/webp' = 'image/png'
 ): Promise<void> {
     const blob = await imageDataToBlob(imageData, format);
-    const url = URL.createObjectURL(blob);
+    await saveOrDownloadBlob(blob, fileName, format);
+}
 
+async function saveOrDownloadBlob(
+    blob: Blob,
+    fileName: string,
+    format: 'image/png' | 'image/jpeg' | 'image/webp'
+): Promise<boolean> {
+    if (isElectron()) {
+        const extension = format === 'image/jpeg' ? 'jpg' : format.replace('image/', '');
+        return saveFileWithDialog(blob, fileName, {
+            filters: [{ name: `${extension.toUpperCase()} Image`, extensions: [extension] }]
+        });
+    }
+
+    const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = fileName;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-
     URL.revokeObjectURL(url);
+    return true;
 }
 
 /**
@@ -271,7 +286,7 @@ export async function downloadImageWithPreset(
     imageData: ImageData,
     fileName: string,
     preset: { format: 'png' | 'jpeg' | 'webp'; quality: number; scale: number }
-): Promise<void> {
+): Promise<boolean> {
     // Scale image if needed
     let outputData = imageData;
     if (preset.scale !== 1) {
@@ -288,14 +303,7 @@ export async function downloadImageWithPreset(
 
     const blob = await imageDataToBlob(outputData, format, quality);
 
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = finalFileName;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    return saveOrDownloadBlob(blob, finalFileName, format);
 }
 
 /**
@@ -551,24 +559,31 @@ export function initClipboard(): void {
  * Set up save handlers
  */
 export function initSaveHandlers(): void {
-    // Save action
-    document.querySelectorAll('[data-action="save"]').forEach(btn => {
-        btn.addEventListener('click', async () => {
-            const state = app.getState();
-            const image = state.ditheredImage || state.sourceImage;
+    const saveCurrentImage = async (): Promise<void> => {
+        const state = app.getState();
+        const image = state.ditheredImage || state.sourceImage;
 
-            if (!image) {
-                setStatus('No image to save');
-                return;
-            }
+        if (!image) {
+            setStatus('No image to save');
+            return;
+        }
 
-            // Generate filename
-            let fileName = state.originalFileName || 'image';
-            const baseName = fileName.replace(/\.[^/.]+$/, '');
-            fileName = `${baseName}_dithered.png`;
+        let fileName = state.originalFileName || 'image';
+        const baseName = fileName.replace(/\.[^/.]+$/, '');
+        fileName = `${baseName}_dithered.png`;
 
-            await downloadImage(image, fileName, 'image/png');
-            setStatus(`Saved: ${fileName}`);
+        const blob = await imageDataToBlob(image, 'image/png');
+        const saved = await saveOrDownloadBlob(blob, fileName, 'image/png');
+        setStatus(saved ? `Saved: ${fileName}` : 'Save cancelled');
+    };
+
+    document.querySelectorAll('[data-action="save"], [data-action="save-as"]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            void saveCurrentImage().catch(error => {
+                const message = error instanceof Error ? error.message : String(error);
+                setStatus(`Save failed: ${message}`);
+                console.error('Image save failed:', error);
+            });
         });
     });
 }

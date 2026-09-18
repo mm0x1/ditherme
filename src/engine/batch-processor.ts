@@ -6,6 +6,7 @@ import { app } from '../app.ts';
 import { processImage } from './dither.ts';
 import { loadImageFile, imageDataToBlob } from './image.ts';
 import type { ExportPreset } from '../types/settings.ts';
+import { isElectron, saveFile as saveFileWithDialog } from '../utils/electron-bridge.ts';
 
 /**
  * Batch job status
@@ -139,14 +140,23 @@ export async function downloadBatchResults(
             const baseName = job.file.name.replace(/\.[^/.]+$/, '');
             const fileName = `${baseName}_dithered.${extension}`;
 
-            const url = URL.createObjectURL(job.result);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = fileName;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
+            if (isElectron()) {
+                await saveFileWithDialog(job.result, fileName, {
+                    filters: [{
+                        name: `${extension.toUpperCase()} Image`,
+                        extensions: [extension]
+                    }]
+                });
+            } else {
+                const url = URL.createObjectURL(job.result);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = fileName;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }
 
             // Small delay between downloads to prevent browser issues
             await new Promise(r => setTimeout(r, 150));

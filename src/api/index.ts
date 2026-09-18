@@ -1,6 +1,6 @@
 /**
  * Scripting API Module
- * HTTP-based REST API for external control of dithertoy
+ * HTTP-based REST API for external control of ditherme
  */
 
 // Type exports

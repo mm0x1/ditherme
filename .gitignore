@@ -3,8 +3,8 @@ dist/
 out/
 release/
 dist-electron/
+coverage/
 *.tsbuildinfo
-build/
 .ai/
 debug/
 wasm/libdither/

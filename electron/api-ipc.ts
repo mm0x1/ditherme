@@ -4,7 +4,6 @@
  */
 
 import { ipcMain, BrowserWindow } from 'electron';
-import { getAPIServer } from './api-server.ts';
 
 /**
  * Setup additional API-related IPC handlers

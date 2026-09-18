@@ -10,12 +10,12 @@ describe('handleInfo', () => {
         expect(res.status).toBe(200);
     });
 
-    it('body.name is dithertoy', async () => {
+    it('body.name is ditherme', async () => {
         const ctx = createMockAPIContext();
         const req = createMockRequest('GET', '/api/info');
         const res = await handleInfo(req, ctx);
         const body = res.body as { name: string };
-        expect(body.name).toBe('dithertoy');
+        expect(body.name).toBe('ditherme');
     });
 
     it('includes apiVersion field', async () => {

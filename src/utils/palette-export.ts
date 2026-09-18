@@ -3,6 +3,7 @@
  */
 
 import type { Color, Palette } from '../types/palette.ts';
+import { isElectron, saveFile as saveFileWithDialog } from './electron-bridge.ts';
 
 export type ExportFormat = 'json' | 'gpl' | 'hex' | 'pal';
 
@@ -134,7 +135,7 @@ export function getMimeType(format: ExportFormat): string {
 /**
  * Download palette as file
  */
-export function downloadPalette(palette: Palette, format: ExportFormat): void {
+export async function downloadPalette(palette: Palette, format: ExportFormat): Promise<boolean> {
     const content = exportPalette(palette, format);
     const ext = getFileExtension(format);
     const mimeType = getMimeType(format);
@@ -145,6 +146,13 @@ export function downloadPalette(palette: Palette, format: ExportFormat): void {
 
     // Create blob and download
     const blob = new Blob([content], { type: mimeType });
+
+    if (isElectron()) {
+        return saveFileWithDialog(blob, filename, {
+            filters: [{ name: `${format.toUpperCase()} Palette`, extensions: [ext] }]
+        });
+    }
+
     const url = URL.createObjectURL(blob);
 
     const link = document.createElement('a');
@@ -155,4 +163,5 @@ export function downloadPalette(palette: Palette, format: ExportFormat): void {
     document.body.removeChild(link);
 
     URL.revokeObjectURL(url);
+    return true;
 }

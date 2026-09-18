@@ -12,8 +12,10 @@ directories:
 # Files to include in the build
 files:
   - out/**/*
+  - LICENSE
+  - THIRD-PARTY-NOTICES.md
 
-# Extra resources (WASM files)
+# Extra resources (WASM files used by packaged Electron)
 extraResources:
   - from: public/wasm
     to: wasm
@@ -22,9 +24,6 @@ extraResources:
 
 # ASAR packaging
 asar: true
-asarUnpack:
-  - "**/*.wasm"
-  - "**/*.node"
 
 # macOS configuration
 mac:
@@ -64,8 +63,9 @@ linux:
     - AppImage
     - deb
   category: Graphics
+  syncDesktopName: true
   icon: build/icons
-  synopsis: Professional dithering application
+  synopsis: Alpha dithering application
   description: A cross-platform dithering application with support for various algorithms
 
 # Debian package
@@ -111,7 +111,7 @@ portable:
 # Auto-update configuration (GitHub releases)
 publish:
   provider: github
-  releaseType: release
+  releaseType: prerelease
 
 # File associations
 fileAssociations:

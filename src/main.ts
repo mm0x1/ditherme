@@ -1,5 +1,5 @@
 /**
- * ditherme - Professional Dithering Application
+ * ditherme - Alpha Dithering Application
  * Main entry point
  */
 
@@ -14,7 +14,6 @@ import { initDragAndDrop, initFileInput, initClipboard, initSaveHandlers, downlo
 import { settings } from './utils/settings.ts';
 import { DEFAULT_EXPORT_PRESETS } from './types/settings.ts';
 import { showHelpDialog, showAboutDialog } from './ui/help-dialog.ts';
-import { showAPIDocsDialog } from './ui/api-docs-dialog.ts';
 import { showBatchDialog } from './ui/batch-dialog.ts';
 import { showSettingsDialog } from './ui/settings-dialog.ts';
 import { initDitherEngine } from './engine/dither.ts';
@@ -22,8 +21,8 @@ import { initVideoEngine, getVideoManager } from './engine/video/index.ts';
 import { initTimeline, setTimeline } from './ui/video/timeline.ts';
 import { getProgressModal } from './ui/video/progress-modal.ts';
 import { showExportDialog } from './ui/video/export-dialog.ts';
-import { isElectron, onMenuAction, setupElectronBodyClass } from './utils/electron-bridge.ts';
-import { initAPIBridge } from './utils/api-bridge.ts';
+import { isElectron, onMenuAction, saveFile as saveFileWithDialog, setupElectronBodyClass } from './utils/electron-bridge.ts';
+import { cleanupLegacyAPIServiceWorkers } from './utils/legacy-api-cleanup.ts';
 
 // Coloris color picker
 import '@melloware/coloris/dist/coloris.css';
@@ -75,6 +74,8 @@ function init(): void {
 
     try {
         console.time('coloris-init');
+        void cleanupLegacyAPIServiceWorkers();
+
         // Initialize Coloris color picker
         Coloris.init();
         Coloris({
@@ -159,8 +160,6 @@ function init(): void {
         setupElectronBodyClass();
         initElectronMenuHandler();
 
-        // Initialize API bridge
-        initAPIBridge();
         console.timeEnd('handlers-init');
 
         // Listen for dither events
@@ -242,13 +241,6 @@ function initMenus(): void {
     document.querySelectorAll('[data-action="about"]').forEach(btn => {
         btn.addEventListener('click', () => {
             showAboutDialog();
-        });
-    });
-
-    // API Documentation action
-    document.querySelectorAll('[data-action="api-docs"]').forEach(btn => {
-        btn.addEventListener('click', () => {
-            showAPIDocsDialog();
         });
     });
 
@@ -359,8 +351,8 @@ function initMenus(): void {
             setStatus(`Exporting as ${preset.name}...`);
 
             try {
-                await downloadImageWithPreset(image, fileName, preset);
-                setStatus(`Exported: ${preset.name}`);
+                const saved = await downloadImageWithPreset(image, fileName, preset);
+                setStatus(saved ? `Exported: ${preset.name}` : 'Export cancelled');
             } catch (error) {
                 setStatus(`Export failed: ${error instanceof Error ? error.message : String(error)}`);
             }
@@ -520,17 +512,22 @@ async function handleVideoExport(): Promise<void> {
         const extension = result.options.format === 'gif' ? 'gif' : result.options.format;
         const fileName = `${baseName}_dithered.${extension}`;
 
-        // Download the file
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = fileName;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-
-        setStatus(`Exported: ${fileName}`);
+        if (isElectron()) {
+            const saved = await saveFileWithDialog(blob, fileName, {
+                filters: [{ name: `${extension.toUpperCase()} Video`, extensions: [extension] }]
+            });
+            setStatus(saved ? `Exported: ${fileName}` : 'Export cancelled');
+        } else {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            setStatus(`Exported: ${fileName}`);
+        }
     } catch (error) {
         if (cancelled) return;
         if ((error as Error).message === 'Export cancelled') {
@@ -629,9 +626,6 @@ function initElectronMenuHandler(): void {
             // Help menu
             case 'help':
                 showHelpDialog();
-                break;
-            case 'api-docs':
-                showAPIDocsDialog();
                 break;
             case 'about':
                 showAboutDialog();

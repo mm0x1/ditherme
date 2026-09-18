@@ -1,22 +1,34 @@
 {
     "name": "ditherme",
-    "version": "0.9.0",
+    "version": "0.9.0-alpha.1",
     "type": "module",
     "description": "cross-platform dithering application",
     "author": {
         "name": "mm0x1",
         "email": "mm0x1@users.noreply.github.com"
     },
+    "license": "GPL-2.0-or-later",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/mm0x1/ditherme.git"
+    },
+    "homepage": "https://github.com/mm0x1/ditherme#readme",
+    "bugs": {
+        "url": "https://github.com/mm0x1/ditherme/issues"
+    },
+    "desktopName": "ditherme",
     "main": "out/main/index.js",
     "scripts": {
         "dev": "vite",
         "dev:electron": "electron-vite dev",
-        "build": "tsc && vite build",
-        "build:electron": "electron-vite build && electron-builder",
-        "build:mac": "electron-vite build && electron-builder --mac",
-        "build:linux": "electron-vite build && electron-builder --linux",
-        "build:win": "electron-vite build && electron-builder --win",
+        "build": "npm run typecheck && vite build",
+        "build:electron": "npm run typecheck:all && electron-vite build && electron-builder",
+        "build:mac": "npm run typecheck:all && electron-vite build && electron-builder --mac",
+        "build:linux": "npm run typecheck:all && electron-vite build && electron-builder --linux",
+        "build:win": "npm run typecheck:all && electron-vite build && electron-builder --win",
         "typecheck": "tsc --noEmit",
+        "typecheck:electron": "tsc --noEmit -p tsconfig.node.json",
+        "typecheck:all": "npm run typecheck && npm run typecheck:electron",
         "preview": "vite preview",
         "test": "vitest run",
         "test:unit": "vitest run tests/unit tests/workers",
@@ -26,13 +38,14 @@
     },
     "dependencies": {
         "@ffmpeg/core": "^0.12.6",
+        "@ffmpeg/core-mt": "^0.12.10",
         "@ffmpeg/ffmpeg": "^0.12.15",
         "@ffmpeg/util": "^0.12.2",
         "@melloware/coloris": "^0.25.0",
         "browser-fs-access": "^0.35.0",
         "comlink": "^4.4.1",
         "culori": "^4.0.1",
-        "electron-updater": "^6.3.9",
+        "electron-updater": "^6.8.9",
         "file-saver": "^2.0.5",
         "mp4-muxer": "^5.2.2",
         "mp4box": "^2.3.0",
@@ -41,21 +54,25 @@
     "devDependencies": {
         "@types/file-saver": "^2.0.7",
         "@types/jsdom": "^28.0.1",
-        "@types/node": "^20.11.5",
-        "@vitest/coverage-v8": "^4.1.4",
-        "electron": "^33.0.0",
-        "electron-builder": "^25.1.8",
-        "electron-vite": "^2.3.0",
+        "@types/node": "^22.12.0",
+        "@vitest/coverage-v8": "^5.0.1",
+        "electron": "^44.4.2",
+        "electron-builder": "^26.15.3",
+        "electron-vite": "^5.0.0",
         "jsdom": "^29.0.2",
         "typescript": "^5.3.3",
-        "vite": "^5.0.12",
-        "vitest": "^4.1.4"
+        "vite": "7.3.6",
+        "vitest": "^5.0.1"
+    },
+    "overrides": {
+        "browserslist": "4.29.0",
+        "@babel/core": "7.29.7",
+        "js-yaml": "4.3.2",
+        "nanoid": "3.3.19",
+        "postcss": "8.5.28",
+        "undici": "7.29.1"
     },
     "engines": {
-        "node": ">=18.0.0"
-    },
-    "optionalDependencies": {
-        "@emnapi/core": "1.9.2",
-        "@emnapi/runtime": "1.9.2"
+        "node": ">=22.12.0"
     }
 }

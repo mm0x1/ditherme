@@ -4,6 +4,7 @@
  */
 
 import type { FileResult } from '../types/electron';
+import { APP_VERSION } from '../version.ts';
 
 /**
  * Check if running in Electron
@@ -40,7 +41,18 @@ export async function getAppVersion(): Promise<string> {
     if (isElectron()) {
         return window.electronAPI!.getVersion();
     }
-    return '1.0.0'; // Default for web
+    return APP_VERSION;
+}
+
+/**
+ * Get the packaged WASM base URL when running in Electron.
+ */
+export async function getWasmURL(): Promise<string | null> {
+    if (!isElectron()) {
+        return null;
+    }
+
+    return window.electronAPI!.getWasmURL();
 }
 
 /**
@@ -106,16 +118,11 @@ export async function saveFile(
     }
 ): Promise<boolean> {
     if (isElectron()) {
-        const path = await window.electronAPI!.saveFileDialog({
+        const buffer = await blob.arrayBuffer();
+        return window.electronAPI!.saveFile(new Uint8Array(buffer), {
             defaultPath: defaultName,
             filters: options?.filters
         });
-
-        if (!path) return false;
-
-        const buffer = await blob.arrayBuffer();
-        await window.electronAPI!.writeFile(path, new Uint8Array(buffer));
-        return true;
     }
 
     // Browser fallback: use download link

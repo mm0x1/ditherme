@@ -36,7 +36,7 @@ export interface FrameDitherSettings {
  * API exposed by the video processor worker
  */
 export interface VideoProcessorAPI {
-    initialize(): Promise<void>;
+    initialize(wasmBaseURL?: string): Promise<void>;
     processFrame(imageData: ImageData, settings: FrameDitherSettings): Promise<ImageData>;
     terminate(): void;
 }
@@ -47,11 +47,11 @@ export interface VideoProcessorAPI {
 class VideoProcessor implements VideoProcessorAPI {
     private initialized = false;
 
-    async initialize(): Promise<void> {
+    async initialize(wasmBaseURL?: string): Promise<void> {
         if (this.initialized) return;
 
         // Initialize WASM in the worker
-        const success = await initDitherWasm();
+        const success = await initDitherWasm(wasmBaseURL);
         if (success) {
             console.log('[VideoProcessor Worker] WASM initialized');
         } else {

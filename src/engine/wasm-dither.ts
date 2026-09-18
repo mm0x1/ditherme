@@ -166,12 +166,51 @@ interface LibDitherModule {
 // Module singleton
 let wasmModule: LibDitherModule | null = null;
 let wasmLoadPromise: Promise<LibDitherModule> | null = null;
+let wasmBaseURL: string | null = null;
+
+async function resolveWasmBaseURL(override?: string): Promise<string> {
+    if (override) {
+        return override;
+    }
+
+    if (import.meta.env.DEV) {
+        return '/wasm/';
+    }
+
+    const globalScope = globalThis as Record<string, unknown>;
+    const electronAPI = globalScope.electronAPI as {
+        getWasmURL?: () => Promise<string>;
+    } | undefined;
+
+    if (electronAPI?.getWasmURL) {
+        return await electronAPI.getWasmURL();
+    }
+
+    const workerWasmBaseURL = typeof location !== 'undefined'
+        ? new URLSearchParams(location.search).get('wasmBaseURL')
+        : null;
+
+    if (workerWasmBaseURL) {
+        return workerWasmBaseURL;
+    }
+
+    return new URL('../wasm/', import.meta.url).href;
+}
+
+function getWasmURL(path: string): string {
+    if (!wasmBaseURL) {
+        throw new Error('WASM base URL has not been initialized');
+    }
+
+    return new URL(path, wasmBaseURL).href;
+}
 
 /**
  * Load the Emscripten factory function, working in both main thread and workers.
  */
-async function loadCreateLibDither(): Promise<(opts: Record<string, unknown>) => Promise<LibDitherModule>> {
+async function loadCreateLibDither(wasmBaseOverride?: string): Promise<(opts: Record<string, unknown>) => Promise<LibDitherModule>> {
     const globalScope = globalThis as Record<string, unknown>;
+    wasmBaseURL ??= await resolveWasmBaseURL(wasmBaseOverride);
 
     // Already available (main thread, previously loaded)
     if (typeof globalScope.createLibDither === 'function') {
@@ -184,7 +223,7 @@ async function loadCreateLibDither(): Promise<(opts: Record<string, unknown>) =>
         // In a worker: fetch the JS and evaluate it. The Emscripten output assigns
         // createLibDither to module.exports or defines it via define(), but in a
         // bare worker neither exists. We provide stubs so the assignment succeeds.
-        const response = await fetch('/wasm/libdither.js');
+        const response = await fetch(getWasmURL('libdither.js'));
         const source = await response.text();
         // Emscripten's UMD footer checks for module.exports first
         const exports: Record<string, unknown> = {};
@@ -200,7 +239,7 @@ async function loadCreateLibDither(): Promise<(opts: Record<string, unknown>) =>
         // Main thread: use script injection
         return new Promise((resolve, reject) => {
             const script = document.createElement('script');
-            script.src = '/wasm/libdither.js';
+            script.src = getWasmURL('libdither.js');
             script.onload = () => {
                 const factory = globalScope.createLibDither;
                 if (typeof factory === 'function') {
@@ -209,7 +248,7 @@ async function loadCreateLibDither(): Promise<(opts: Record<string, unknown>) =>
                     reject(new Error('createLibDither not found after script load'));
                 }
             };
-            script.onerror = () => reject(new Error('Failed to load libdither.js'));
+            script.onerror = () => reject(new Error(`Failed to load libdither.js from ${script.src}`));
             document.head.appendChild(script);
         });
     }
@@ -218,14 +257,14 @@ async function loadCreateLibDither(): Promise<(opts: Record<string, unknown>) =>
 /**
  * Initialize the WASM module
  */
-export async function initWasm(): Promise<LibDitherModule> {
+export async function initWasm(wasmBaseOverride?: string): Promise<LibDitherModule> {
     if (wasmModule) return wasmModule;
     if (wasmLoadPromise) return wasmLoadPromise;
 
     wasmLoadPromise = (async () => {
-        const createModule = await loadCreateLibDither();
+        const createModule = await loadCreateLibDither(wasmBaseOverride);
         const module = await createModule({
-            locateFile: (path: string) => `/wasm/${path}`
+            locateFile: (path: string) => getWasmURL(path)
         });
         wasmModule = module;
         return module;

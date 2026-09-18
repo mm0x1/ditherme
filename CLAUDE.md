@@ -10,6 +10,7 @@ npm run dev:electron     # Electron dev with hot reload
 npm run build            # Web build (tsc + vite → dist/)
 npm run build:electron   # Electron build for current platform
 npm run typecheck        # TypeScript type-check only (no emit)
+npm run typecheck:all    # Type-check web and Electron sources
 npm run preview          # Preview production web build
 ```
 
@@ -17,11 +18,11 @@ npm run preview          # Preview production web build
 cd wasm && ./build.sh    # Rebuild WASM (libdither C → public/wasm/)
 ```
 
-There are no automated tests. Verification is done via `npm run typecheck` and the manual testing checklist in `AGENT_REFERENCE.md`.
+Automated tests run with `npm test`. Verification also includes `npm run typecheck:all`, the production web/Electron builds, and the manual testing checklist in `AGENT_REFERENCE.md`.
 
 ## Architecture
 
-**ditherme** is a vanilla TypeScript dithering app for images/video. It runs as both a web app (Vite) and a cross-platform Electron desktop app. No UI framework — all DOM manipulation is native.
+**ditherme** is a vanilla TypeScript dithering app for images/video. The web app is the primary product and the cross-platform Electron desktop app is an optional add-on. No UI framework — all DOM manipulation is native.
 
 ### State
 
@@ -59,7 +60,7 @@ app.on('statechange', (e) => { /* e.detail.changes, e.detail.previousState */ })
 
 - `main.ts` — window creation, app lifecycle
 - `preload.ts` — IPC bridge (context isolation)
-- `api-server.ts` — HTTP API server on `localhost:7842`
+- `api-server.ts` — parked scripting API implementation, not wired into the alpha app
 - Same renderer code as web version
 
 ## Key Conventions

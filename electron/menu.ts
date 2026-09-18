@@ -207,11 +207,6 @@ export function createMenu(mainWindow: BrowserWindow): void {
                 },
                 { type: 'separator' },
                 {
-                    label: 'API Documentation',
-                    click: () => sendMenuAction(mainWindow, 'api-docs')
-                },
-                { type: 'separator' },
-                {
                     label: 'About ditherme',
                     click: () => sendMenuAction(mainWindow, 'about')
                 },
@@ -219,13 +214,13 @@ export function createMenu(mainWindow: BrowserWindow): void {
                 {
                     label: 'Learn More',
                     click: async () => {
-                        await shell.openExternal('https://github.com/yourusername/ditherme');
+                        await shell.openExternal('https://github.com/mm0x1/ditherme');
                     }
                 },
                 {
                     label: 'Report an Issue',
                     click: async () => {
-                        await shell.openExternal('https://github.com/yourusername/ditherme/issues');
+                        await shell.openExternal('https://github.com/mm0x1/ditherme/issues');
                     }
                 }
             ]

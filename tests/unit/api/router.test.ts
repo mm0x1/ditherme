@@ -55,7 +55,7 @@ describe('handleRequest', () => {
         const res = await handleRequest(req, ctx);
         expect(res.status).toBe(200);
         const body = res.body as { name: string };
-        expect(body.name).toBe('dithertoy');
+        expect(body.name).toBe('ditherme');
     });
 
     it('routes GET /api/settings to settings handler', async () => {

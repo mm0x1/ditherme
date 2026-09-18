@@ -4,6 +4,7 @@
 
 import type { Palette } from '../types/palette.ts';
 import { downloadPalette, type ExportFormat } from '../utils/palette-export.ts';
+import { escapeHtml } from '../utils/html.ts';
 
 /**
  * Result from the export dialog
@@ -25,7 +26,7 @@ export function showExportPaletteDialog(palette: Palette): Promise<ExportPalette
                 <h3>Export Palette</h3>
 
                 <div class="export-palette-preview">
-                    <div class="export-palette-name">${palette.name}</div>
+                    <div class="export-palette-name">${escapeHtml(palette.name)}</div>
                     <div class="export-palette-swatches">
                         ${palette.colors.slice(0, 16).map(c =>
                             `<div class="export-swatch" style="background-color: rgb(${c.r},${c.g},${c.b})"></div>`
@@ -94,12 +95,16 @@ export function showExportPaletteDialog(palette: Palette): Promise<ExportPalette
             resolve({ confirmed: false });
         });
 
-        confirmBtn.addEventListener('click', () => {
+        confirmBtn.addEventListener('click', async () => {
             const format = formatSelect.value as ExportFormat;
             close();
-            // Perform the download
-            downloadPalette(palette, format);
-            resolve({ confirmed: true, format });
+            try {
+                const saved = await downloadPalette(palette, format);
+                resolve(saved ? { confirmed: true, format } : { confirmed: false });
+            } catch (error) {
+                console.error('Palette export failed:', error);
+                resolve({ confirmed: false });
+            }
         });
 
         // Handle keyboard
@@ -110,8 +115,14 @@ export function showExportPaletteDialog(palette: Palette): Promise<ExportPalette
             } else if (e.key === 'Enter') {
                 const format = formatSelect.value as ExportFormat;
                 close();
-                downloadPalette(palette, format);
-                resolve({ confirmed: true, format });
+                void downloadPalette(palette, format)
+                    .then(saved => {
+                        resolve(saved ? { confirmed: true, format } : { confirmed: false });
+                    })
+                    .catch(error => {
+                        console.error('Palette export failed:', error);
+                        resolve({ confirmed: false });
+                    });
             }
         }
         document.addEventListener('keydown', handleKeydown);

@@ -4,68 +4,146 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version tag (e.g., v1.0.0)'
+        description: 'Release version matching package.json (e.g., 0.9.0-alpha.1)'
         required: true
         type: string
 
 jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Validate release version
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: |
+          test "$(node -p "require('./package.json').version")" = "$RELEASE_VERSION"
+          test -f build/icon.ico
+          test -f build/icon.icns
+          test -f build/entitlements.mac.plist
+          test -f build/icons/512x512.png
+
+  test:
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22.12.0
+          cache: 'npm'
+      - run: npm ci
+      - run: npm test
+      - run: npm audit --audit-level=high
+      - run: npm audit --omit=dev --audit-level=high
+
+  build-web:
+    needs: [validate, test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22.12.0
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run build
+      - run: cp LICENSE THIRD-PARTY-NOTICES.md dist/
+      - name: Archive web build
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: tar -czf "ditherme-web-${RELEASE_VERSION}.tar.gz" -C dist .
+      - run: test -f "ditherme-web-${{ inputs.version }}.tar.gz"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: web-builds
+          path: ditherme-web-*.tar.gz
+          if-no-files-found: error
+
   build-mac:
+    needs: [validate, test]
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version: 22.12.0
           cache: 'npm'
       - run: npm ci
-      - run: npm run build:mac
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - run: npm run build:mac -- --publish never
+      - name: Verify macOS artifacts
+        shell: bash
+        run: |
+          set -- release/*.dmg
+          test -f "$1"
+          test -f release/latest-mac.yml
       - uses: actions/upload-artifact@v7
         with:
           name: mac-builds
           path: |
             release/*.dmg
             release/*.zip
+            release/latest-mac.yml
+            release/*.blockmap
+          if-no-files-found: error
 
   build-linux:
+    needs: [validate, test]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version: 22.12.0
           cache: 'npm'
       - run: npm ci
-      - run: npm run build:linux
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - run: npm run build:linux -- --publish never
+      - name: Verify Linux artifacts
+        shell: bash
+        run: |
+          set -- release/*.AppImage
+          test -f "$1"
+          set -- release/*.deb
+          test -f "$1"
+          test -f release/latest-linux.yml
       - uses: actions/upload-artifact@v7
         with:
           name: linux-builds
           path: |
             release/*.AppImage
             release/*.deb
+            release/latest-linux.yml
+            release/*.blockmap
+          if-no-files-found: error
 
   build-windows:
+    needs: [validate, test]
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version: 22.12.0
           cache: 'npm'
       - run: npm ci
-      - run: npm run build:win
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - run: npm run build:win -- --publish never
+      - name: Verify Windows artifacts
+        shell: bash
+        run: |
+          set -- release/*.exe
+          test -f "$1"
+          test -f release/latest.yml
       - uses: actions/upload-artifact@v7
         with:
           name: windows-builds
-          path: release/*.exe
+          path: |
+            release/*.exe
+            release/latest.yml
+            release/*.blockmap
+          if-no-files-found: error
 
   release:
-    needs: [build-mac, build-linux, build-windows]
+    needs: [build-web, build-mac, build-linux, build-windows]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -75,10 +153,12 @@ jobs:
           path: artifacts
           merge-multiple: true
       - run: ls -la artifacts/
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3
         with:
+          token: ${{ secrets.GITHUB_TOKEN }}
           tag_name: ${{ inputs.version }}
           name: ditherme ${{ inputs.version }}
-          files: artifacts/*
+          files: artifacts/**/*
           draft: false
-          prerelease: false
+          prerelease: true
+          fail_on_unmatched_files: true

@@ -2,6 +2,8 @@
  * Help dialog - displays keyboard shortcuts and app info
  */
 
+import { APP_VERSION } from '../version.ts';
+
 interface Shortcut {
     keys: string;
     description: string;
@@ -82,7 +84,7 @@ export function showHelpDialog(): void {
                 ${shortcutsHtml}
             </div>
             <div class="help-footer">
-                <p><strong>ditherme</strong> - Professional Dithering Application</p>
+                <p><strong>ditherme</strong> - Alpha Dithering Application</p>
                 <p class="help-tips">
                     Drag and drop images to load them. Star your favorite algorithms for quick access.
                 </p>
@@ -143,15 +145,15 @@ export function showAboutDialog(): void {
                     <span class="logo-icon">◐</span>
                     <span class="logo-text">ditherme</span>
                 </div>
-                <p class="about-version">Version 1.0.0</p>
+                <p class="about-version">Version ${APP_VERSION}</p>
                 <p class="about-description">
-                    A professional dithering application for creating retro-style
+                    An alpha dithering application for creating retro-style
                     graphics, pixel art, and artistic image effects.
                 </p>
                 <div class="about-features">
                     <h4>Features</h4>
                     <ul>
-                        <li>100+ dithering algorithms</li>
+                    <li>90+ dithering algorithms</li>
                         <li>WASM-accelerated processing</li>
                         <li>Video dithering support</li>
                         <li>Custom color palettes</li>
@@ -160,7 +162,7 @@ export function showAboutDialog(): void {
                     </ul>
                 </div>
                 <p class="about-copyright">
-                    &copy; 2024 ditherme
+                    &copy; 2024-2026 mm0x1
                 </p>
             </div>
         </div>

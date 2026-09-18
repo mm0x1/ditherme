@@ -6,6 +6,24 @@ import { UserSettings, DEFAULT_SETTINGS } from '../types/settings.ts';
 
 const STORAGE_KEY = 'ditherme_settings';
 
+type PersistedSettings = Omit<
+    UserSettings,
+    'apiEnabled' | 'apiPort' | 'apiBindAddress' | 'apiAuthEnabled' | 'apiAuthToken'
+>;
+
+function withoutAPISettings(value: UserSettings): PersistedSettings {
+    const {
+        apiEnabled: _apiEnabled,
+        apiPort: _apiPort,
+        apiBindAddress: _apiBindAddress,
+        apiAuthEnabled: _apiAuthEnabled,
+        apiAuthToken: _apiAuthToken,
+        ...persisted
+    } = value;
+
+    return persisted;
+}
+
 /**
  * Settings manager with localStorage persistence
  */
@@ -30,9 +48,22 @@ class SettingsManager extends EventTarget {
                     localStorage.removeItem(STORAGE_KEY);
                     return { ...DEFAULT_SETTINGS };
                 }
-                const parsed = JSON.parse(stored);
+                const parsed = JSON.parse(stored) as Partial<UserSettings>;
+
+                // Do not carry the disabled API configuration or old tokens forward.
+                const {
+                    apiEnabled: _apiEnabled,
+                    apiPort: _apiPort,
+                    apiBindAddress: _apiBindAddress,
+                    apiAuthEnabled: _apiAuthEnabled,
+                    apiAuthToken: _apiAuthToken,
+                    ...userSettings
+                } = parsed;
+
                 // Merge with defaults to handle new settings added in updates
-                return { ...DEFAULT_SETTINGS, ...parsed };
+                const merged: UserSettings = { ...DEFAULT_SETTINGS, ...userSettings };
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(withoutAPISettings(merged)));
+                return merged;
             }
         } catch (e) {
             console.warn('Failed to load settings from localStorage:', e);
@@ -51,7 +82,7 @@ class SettingsManager extends EventTarget {
      */
     private save(): void {
         try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(this.settings));
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(withoutAPISettings(this.settings)));
             this.dispatchEvent(new CustomEvent('settingschange', {
                 detail: { settings: this.settings }
             }));

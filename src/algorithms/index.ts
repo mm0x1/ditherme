@@ -357,9 +357,9 @@ export async function ditherAsync(
 /**
  * Pre-initialize WASM module (call on app startup)
  */
-export async function initDitherWasm(): Promise<boolean> {
+export async function initDitherWasm(wasmBaseURL?: string): Promise<boolean> {
     try {
-        await initWasm();
+        await initWasm(wasmBaseURL);
         console.log('WASM dither module initialized');
         return true;
     } catch (error) {

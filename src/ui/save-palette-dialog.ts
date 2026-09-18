@@ -3,6 +3,7 @@
  */
 
 import { paletteStorage } from '../utils/palette-storage.ts';
+import { escapeHtml } from '../utils/html.ts';
 
 /**
  * Result from the save dialog
@@ -27,7 +28,7 @@ export function showSavePaletteDialog(currentName?: string): Promise<SavePalette
                     <label for="palette-name-input">Palette Name</label>
                     <input type="text" id="palette-name-input" class="form-input"
                            maxlength="50" placeholder="Enter palette name..."
-                           value="${currentName || ''}">
+                           value="${escapeHtml(currentName ?? '')}">
                 </div>
 
                 <div class="save-palette-warning hidden" id="save-palette-warning">

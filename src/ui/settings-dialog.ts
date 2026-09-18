@@ -3,8 +3,6 @@
  */
 
 import { settings } from '../utils/settings.ts';
-import { generateToken } from '../api/middleware/auth.ts';
-import { isElectron } from '../utils/electron-bridge.ts';
 
 /**
  * Show the settings dialog
@@ -78,39 +76,6 @@ export function showSettingsDialog(): void {
                     </div>
                 </div>
 
-                <div class="settings-section">
-                    <h4>Scripting API</h4>
-                    <div class="setting-item">
-                        <label class="setting-label">
-                            <input type="checkbox" id="setting-api-enabled" ${currentSettings.apiEnabled ? 'checked' : ''}>
-                            <span>Enable API</span>
-                        </label>
-                        <p class="setting-description">Allow external scripts to control dithertoy via HTTP API</p>
-                    </div>
-                    <div class="setting-item" id="api-port-group">
-                        <label class="setting-label">
-                            <span>Port</span>
-                            <input type="number" id="setting-api-port" value="${currentSettings.apiPort}" min="1024" max="65535" step="1">
-                        </label>
-                        <p class="setting-description">API server port (default: 7842)</p>
-                    </div>
-                    <div class="setting-item" id="api-auth-group">
-                        <label class="setting-label">
-                            <input type="checkbox" id="setting-api-auth-enabled" ${currentSettings.apiAuthEnabled ? 'checked' : ''}>
-                            <span>Require authentication</span>
-                        </label>
-                        <p class="setting-description">Require Bearer token for API requests</p>
-                    </div>
-                    <div class="setting-item" id="api-token-group" style="${currentSettings.apiAuthEnabled ? '' : 'display: none;'}">
-                        <label class="setting-label">
-                            <span>API Token</span>
-                            <div class="token-input-group">
-                                <input type="text" id="setting-api-token" value="${currentSettings.apiAuthToken || ''}" placeholder="Enter or generate token" style="flex: 1;">
-                                <button type="button" class="btn btn-small" id="generate-token-btn">Generate</button>
-                            </div>
-                        </label>
-                    </div>
-                </div>
             </div>
             <div class="modal-actions">
                 <button class="btn btn-secondary" id="settings-reset">Reset to Defaults</button>
@@ -131,57 +96,15 @@ export function showSettingsDialog(): void {
     const resetBtn = modal.querySelector('#settings-reset') as HTMLButtonElement;
     const closeBtn = modal.querySelector('.close-btn') as HTMLButtonElement;
 
-    // API settings elements
-    const apiEnabledCheckbox = modal.querySelector('#setting-api-enabled') as HTMLInputElement;
-    const apiPortInput = modal.querySelector('#setting-api-port') as HTMLInputElement;
-    const apiAuthEnabledCheckbox = modal.querySelector('#setting-api-auth-enabled') as HTMLInputElement;
-    const apiTokenInput = modal.querySelector('#setting-api-token') as HTMLInputElement;
-    const generateTokenBtn = modal.querySelector('#generate-token-btn') as HTMLButtonElement;
-    const apiTokenGroup = modal.querySelector('#api-token-group') as HTMLElement;
-
-    // Toggle token visibility based on auth enabled
-    apiAuthEnabledCheckbox.addEventListener('change', () => {
-        apiTokenGroup.style.display = apiAuthEnabledCheckbox.checked ? '' : 'none';
-    });
-
-    // Generate token button
-    generateTokenBtn.addEventListener('click', () => {
-        apiTokenInput.value = generateToken(32);
-    });
-
     // Save handler
-    saveBtn.addEventListener('click', async () => {
-        const apiPort = parseInt(apiPortInput.value, 10);
-        const apiAuthToken = apiTokenInput.value.trim() || null;
-
+    saveBtn.addEventListener('click', () => {
         settings.update({
             showWasmBadges: wasmBadgesCheckbox.checked,
             autoFitOnLoad: autoFitCheckbox.checked,
             enableCaching: cachingCheckbox.checked,
             cacheMaxMemoryMB: parseInt(cacheSizeInput.value, 10),
-            defaultMode: defaultModeSelect.value as 'mono' | 'color',
-            apiEnabled: apiEnabledCheckbox.checked,
-            apiPort: Math.max(1024, Math.min(65535, isNaN(apiPort) ? 7842 : apiPort)),
-            apiAuthEnabled: apiAuthEnabledCheckbox.checked,
-            apiAuthToken
+            defaultMode: defaultModeSelect.value as 'mono' | 'color'
         });
-
-        // Update API server in Electron mode
-        if (isElectron() && window.electronAPI) {
-            if (apiEnabledCheckbox.checked) {
-                const result = await window.electronAPI.startAPIServer({
-                    port: apiPort,
-                    bindAddress: '127.0.0.1',
-                    authEnabled: apiAuthEnabledCheckbox.checked,
-                    authToken: apiAuthToken
-                });
-                if (!result.success) {
-                    console.error('Failed to update API server:', result.error);
-                }
-            } else {
-                await window.electronAPI.stopAPIServer();
-            }
-        }
 
         modal.remove();
     });

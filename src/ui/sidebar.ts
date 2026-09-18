@@ -2,18 +2,7 @@ import { app } from '../app.ts';
 import type { Algorithm, AlgorithmCategory, DitherMode } from '../types/index.ts';
 import { ALGORITHMS, getAlgorithmsByCategory, shouldUseWasm, isWasmLoaded } from '../algorithms/index.ts';
 import { settings } from '../utils/settings.ts';
-
-/**
- * Escape HTML special characters to prevent injection via template strings.
- */
-function escapeHtml(str: string): string {
-    return str
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
-}
+import { escapeHtml } from '../utils/html.ts';
 
 /**
  * Category display order

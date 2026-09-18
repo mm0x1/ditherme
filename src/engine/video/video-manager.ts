@@ -9,6 +9,7 @@ import { FrameCache, createFrameCache, computeSettingsHash } from './frame-cache
 import { createVideoWorkerPool, type WorkerPool } from '../../workers/worker-pool.ts';
 import type { VideoProcessorAPI, FrameDitherSettings } from '../../workers/video-processor.worker.ts';
 import { createEncoder } from './encoder.ts';
+import { getWasmURL } from '../../utils/electron-bridge.ts';
 
 /**
  * Source frame buffer for efficient extraction
@@ -99,9 +100,15 @@ export class VideoManager {
 
         // Initialize worker pool on first load
         if (!this.workerPool) {
+            const wasmBaseURL = await getWasmURL();
             this.workerPool = createVideoWorkerPool();
-            // Initialize workers
-            await this.workerPool.execute(worker => worker.initialize());
+            // Initialize every worker with the packaged WASM location.
+            await this.workerPool.executeAll(
+                Array.from(
+                    { length: this.workerPool.size },
+                    () => (worker) => worker.initialize(wasmBaseURL ?? undefined)
+                )
+            );
         }
 
         return this.metadata;

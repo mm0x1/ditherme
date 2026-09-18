@@ -1,6 +1,6 @@
 /**
  * OpenAPI 3.0 Specification
- * API documentation for dithertoy scripting API
+ * API documentation for the ditherme scripting API
  */
 
 import { API_VERSION, DEFAULT_API_PORT } from './index.ts';
@@ -12,12 +12,12 @@ export function getOpenAPISpec(port: number = DEFAULT_API_PORT): object {
     return {
         openapi: '3.0.3',
         info: {
-            title: 'dithertoy API',
-            description: 'HTTP-based REST API for programmatically controlling dithertoy. Allows external scripts and tools to load images, configure dithering settings, trigger processing, and export results.',
+            title: 'ditherme API',
+            description: 'HTTP-based REST API for programmatically controlling ditherme. Allows external scripts and tools to load images, configure dithering settings, trigger processing, and export results.',
             version: API_VERSION,
             contact: {
-                name: 'dithertoy',
-                url: 'https://github.com/yourusername/dithertoy'
+                name: 'ditherme',
+                url: 'https://github.com/mm0x1/ditherme'
             },
             license: {
                 name: 'MIT',

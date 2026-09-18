@@ -5,6 +5,7 @@
 
 import electronUpdater from 'electron-updater';
 import { BrowserWindow, dialog, ipcMain } from 'electron';
+import { assertTrustedRenderer } from './security';
 
 const { autoUpdater } = electronUpdater;
 type UpdateInfo = electronUpdater.UpdateInfo;
@@ -20,6 +21,7 @@ export function setupAutoUpdater(win: BrowserWindow | null): void {
     // Configure auto-updater
     autoUpdater.autoDownload = false;
     autoUpdater.autoInstallOnAppQuit = true;
+    autoUpdater.allowPrerelease = true;
 
     // Check for updates on startup (with delay to not slow down startup)
     setTimeout(() => {
@@ -94,12 +96,14 @@ export function setupAutoUpdater(win: BrowserWindow | null): void {
     });
 
     // IPC: Install update manually
-    ipcMain.on('install-update', () => {
+    ipcMain.on('install-update', (event) => {
+        assertTrustedRenderer(event);
         autoUpdater.quitAndInstall();
     });
 
     // IPC: Check for updates manually
-    ipcMain.handle('check-for-updates', async () => {
+    ipcMain.handle('check-for-updates', async (event) => {
+        assertTrustedRenderer(event);
         try {
             const result = await autoUpdater.checkForUpdates();
             return result?.updateInfo.version || null;

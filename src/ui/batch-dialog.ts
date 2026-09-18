@@ -8,6 +8,7 @@ import { DEFAULT_EXPORT_PRESETS } from '../types/settings.ts';
 import { processBatch, downloadBatchResults } from '../engine/batch-processor.ts';
 import { ALGORITHMS } from '../algorithms/index.ts';
 import type { Algorithm, ImageAdjustments } from '../types/index.ts';
+import { escapeHtml } from '../utils/html.ts';
 
 /**
  * Check if any adjustments are non-default
@@ -58,7 +59,7 @@ export function showBatchDialog(): void {
                 <label for="batch-preset">Export Preset</label>
                 <select id="batch-preset" class="form-select">
                     ${allPresets.map(p => `
-                        <option value="${p.id}">${p.name}</option>
+                        <option value="${escapeHtml(p.id)}">${escapeHtml(p.name)}</option>
                     `).join('')}
                 </select>
             </div>
@@ -66,9 +67,9 @@ export function showBatchDialog(): void {
             <div class="batch-info">
                 <p>Current settings will be applied to all images:</p>
                 <ul>
-                    <li>Algorithm: <strong>${algorithmInfo?.name || state.algorithm}</strong></li>
-                    <li>Palette: <strong>${state.palette.name}</strong> (${state.palette.colors.length} colors)</li>
-                    <li>Color Match: <strong>${state.colorMatch}</strong></li>
+                    <li>Algorithm: <strong>${escapeHtml(algorithmInfo?.name ?? state.algorithm)}</strong></li>
+                    <li>Palette: <strong>${escapeHtml(state.palette.name)}</strong> (${state.palette.colors.length} colors)</li>
+                    <li>Color Match: <strong>${escapeHtml(state.colorMatch)}</strong></li>
                     ${state.pixelScale > 1 ? `<li>Pixel Scale: <strong>${state.pixelScale}x</strong></li>` : ''}
                     ${state.levels > 0 ? `<li>Levels: <strong>${state.levels}</strong></li>` : ''}
                     ${hasAdjustments(state.adjustments) ? `<li>Adjustments: <strong>Applied</strong></li>` : ''}
@@ -121,7 +122,7 @@ export function showBatchDialog(): void {
 
         fileList.innerHTML = selectedFiles.map((file, index) => `
             <div class="batch-file-item" data-index="${index}">
-                <span class="file-name">${file.name}</span>
+                <span class="file-name">${escapeHtml(file.name)}</span>
                 <span class="file-size">${formatFileSize(file.size)}</span>
                 <button class="remove-file" data-index="${index}" title="Remove">&times;</button>
             </div>

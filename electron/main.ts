@@ -8,8 +8,9 @@ import { join } from 'path';
 import { createMenu } from './menu';
 import { setupDialogHandlers } from './dialogs';
 import { setupAutoUpdater } from './updater';
-import { getWasmPath } from './paths';
-import { initAPIServer, setupAPIServerIPC, getAPIServer } from './api-server';
+import { getApprovedExternalURL } from './external-links';
+import { getWasmURL } from './paths';
+import { assertTrustedRenderer } from './security';
 
 // Prevent garbage collection of window
 let mainWindow: BrowserWindow | null = null;
@@ -25,7 +26,7 @@ function createWindow(): void {
         minHeight: 600,
         backgroundColor: '#1e1e1e',
         webPreferences: {
-            preload: join(__dirname, '../preload/index.mjs'),
+            preload: join(__dirname, '../preload/index.js'),
             contextIsolation: true,
             nodeIntegration: false,
             sandbox: true,
@@ -41,7 +42,11 @@ function createWindow(): void {
 
     // Handle external links
     mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-        shell.openExternal(url);
+        const approvedUrl = getApprovedExternalURL(url);
+        if (approvedUrl) {
+            void shell.openExternal(approvedUrl);
+        }
+
         return { action: 'deny' };
     });
 
@@ -66,12 +71,9 @@ function createWindow(): void {
 }
 
 // Handle app ready
-app.whenReady().then(async () => {
+app.whenReady().then(() => {
     // Setup dialog handlers once (before creating windows)
     setupDialogHandlers();
-
-    // Setup API server IPC handlers
-    setupAPIServerIPC();
 
     createWindow();
 
@@ -81,26 +83,6 @@ app.whenReady().then(async () => {
             createWindow();
         }
     });
-
-    // Initialize and start API server with default settings
-    // Settings will be synced from renderer when it connects
-    const apiServer = initAPIServer({
-        port: 7842,
-        bindAddress: '127.0.0.1',
-        authEnabled: false,
-        authToken: null
-    });
-
-    if (mainWindow) {
-        apiServer.setMainWindow(mainWindow);
-    }
-
-    try {
-        await apiServer.start();
-        console.log('[Main] API server started');
-    } catch (error) {
-        console.error('[Main] Failed to start API server:', error);
-    }
 
     // Setup auto-updater (production only)
     if (!process.env.VITE_DEV_SERVER_URL) {
@@ -113,14 +95,6 @@ app.on('window-all-closed', () => {
     // macOS: keep app in dock unless explicitly quit
     if (process.platform !== 'darwin') {
         app.quit();
-    }
-});
-
-// Stop API server before quitting
-app.on('before-quit', async () => {
-    const apiServer = getAPIServer();
-    if (apiServer) {
-        await apiServer.stop();
     }
 });
 
@@ -143,11 +117,21 @@ app.on('web-contents-created', (_, contents) => {
 });
 
 // IPC handlers for app info
-ipcMain.handle('get-app-version', () => app.getVersion());
-ipcMain.handle('get-platform', () => process.platform);
-ipcMain.handle('get-wasm-path', () => getWasmPath());
+ipcMain.handle('get-app-version', (event) => {
+    assertTrustedRenderer(event);
+    return app.getVersion();
+});
+ipcMain.handle('get-platform', (event) => {
+    assertTrustedRenderer(event);
+    return process.platform;
+});
+ipcMain.handle('get-wasm-url', (event) => {
+    assertTrustedRenderer(event);
+    return getWasmURL();
+});
 
 // Handle renderer requesting focus
-ipcMain.on('focus-window', () => {
+ipcMain.on('focus-window', (event) => {
+    assertTrustedRenderer(event);
     mainWindow?.focus();
 });

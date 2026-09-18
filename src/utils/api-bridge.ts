@@ -5,8 +5,6 @@
 
 import { app } from '../app.ts';
 import { settings } from './settings.ts';
-import { isElectron } from './electron-bridge.ts';
-import { handleRequest, createAPIRequest } from '../api/router.ts';
 import { createBatchQueue } from '../api/batch-queue.ts';
 import type { APIContext, AppStateSnapshot, ImageSource, BatchQueue, BatchJobSettings } from '../api/types.ts';
 import { ditherAsync } from '../algorithms/index.ts';
@@ -141,11 +139,7 @@ async function loadImageFromSource(source: ImageSource): Promise<ImageData> {
     } else if (source.type === 'url') {
         return loadImageFromURL(source.url);
     } else if (source.type === 'file') {
-        // File loading is only available in Electron
-        if (!isElectron()) {
-            throw new Error('File path loading is only available in Electron mode');
-        }
-        return loadImageFromFile(source.path);
+        throw new Error('File path loading is unavailable while the scripting API is disabled');
     }
 
     throw new Error('Invalid image source type');
@@ -212,25 +206,6 @@ async function loadImageFromURL(url: string): Promise<ImageData> {
 
         img.src = url;
     });
-}
-
-/**
- * Load image from file path (Electron only)
- */
-async function loadImageFromFile(path: string): Promise<ImageData> {
-    if (!window.electronAPI) {
-        throw new Error('Electron API not available');
-    }
-
-    const data = await window.electronAPI.readFile(path);
-    const blob = new Blob([data as BlobPart]);
-    const url = URL.createObjectURL(blob);
-
-    try {
-        return await loadImageFromURL(url);
-    } finally {
-        URL.revokeObjectURL(url);
-    }
 }
 
 /**
@@ -318,117 +293,4 @@ async function processImageForBatch(source: ImageSource, jobSettings: BatchJobSe
     );
 
     return base64;
-}
-
-/**
- * Initialize API handling for the current platform
- */
-export function initAPIBridge(): void {
-    if (isElectron()) {
-        initElectronAPIBridge();
-    } else {
-        initWebAPIBridge();
-    }
-}
-
-/**
- * Initialize API bridge for Electron mode
- */
-function initElectronAPIBridge(): void {
-    if (!window.electronAPI) {
-        console.warn('[API Bridge] Electron API not available');
-        return;
-    }
-
-    const context = createAPIContext();
-
-    // Handle API requests from main process
-    window.electronAPI.onAPIRequest(async ({ id, request }) => {
-        try {
-            const apiRequest = createAPIRequest(
-                (request as { method: string }).method,
-                (request as { path: string }).path,
-                (request as { headers: Record<string, string> }).headers,
-                (request as { body: unknown }).body
-            );
-
-            // Add auth info from request
-            const reqWithAuth = request as { authEnabled?: boolean; authToken?: string | null };
-
-            const response = await handleRequest(apiRequest, {
-                ...context,
-                isAuthEnabled: () => reqWithAuth.authEnabled ?? false,
-                getAuthToken: () => reqWithAuth.authToken ?? null
-            });
-
-            window.electronAPI!.sendAPIResponse(id, response);
-        } catch (error) {
-            window.electronAPI!.sendAPIResponse(
-                id,
-                undefined,
-                error instanceof Error ? error.message : 'Request handling failed'
-            );
-        }
-    });
-
-    console.log('[API Bridge] Electron API bridge initialized');
-}
-
-/**
- * Initialize API bridge for Web mode (Service Worker)
- */
-function initWebAPIBridge(): void {
-    // Register service worker
-    if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/api-service.worker.js', { scope: '/api/' })
-            .then(registration => {
-                console.log('[API Bridge] Service Worker registered:', registration.scope);
-            })
-            .catch(error => {
-                console.error('[API Bridge] Service Worker registration failed:', error);
-            });
-
-        // Handle messages from service worker
-        navigator.serviceWorker.addEventListener('message', async (event) => {
-            const data = event.data;
-
-            if (data.type !== 'api-request') {
-                return;
-            }
-
-            const context = createAPIContext();
-
-            try {
-                const apiRequest = createAPIRequest(
-                    data.request.method,
-                    data.request.path,
-                    data.request.headers,
-                    data.request.body
-                );
-
-                const response = await handleRequest(apiRequest, context);
-
-                // Send response back to service worker
-                if (navigator.serviceWorker.controller) {
-                    navigator.serviceWorker.controller.postMessage({
-                        type: 'api-response',
-                        id: data.id,
-                        response
-                    });
-                }
-            } catch (error) {
-                if (navigator.serviceWorker.controller) {
-                    navigator.serviceWorker.controller.postMessage({
-                        type: 'api-response',
-                        id: data.id,
-                        error: error instanceof Error ? error.message : 'Request handling failed'
-                    });
-                }
-            }
-        });
-
-        console.log('[API Bridge] Web API bridge initialized');
-    } else {
-        console.warn('[API Bridge] Service Workers not supported - API not available in web mode');
-    }
 }

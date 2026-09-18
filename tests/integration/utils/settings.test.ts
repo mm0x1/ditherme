@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 // Import after setting environment — SettingsManager reads localStorage in constructor
 async function getSettings() {
@@ -13,12 +13,14 @@ const STORAGE_KEY = 'ditherme_settings';
 describe('SettingsManager (integration)', () => {
     beforeEach(() => {
         localStorage.clear();
+        vi.resetModules();
     });
 
     it('loads default settings when localStorage is empty', async () => {
         const settings = await getSettings();
         expect(settings.get('defaultMode')).toBe('mono');
         expect(settings.get('favoriteAlgorithms')).toEqual([]);
+        expect(settings.get('apiEnabled')).toBe(false);
     });
 
     it('persists a setting to localStorage', async () => {
@@ -141,6 +143,31 @@ describe('SettingsManager (integration)', () => {
         // Other defaults remain intact
         expect(settings.get('defaultMode')).toBe('color');
         expect(settings.get('enableCaching')).toBe(true); // from defaults
+    });
+
+    it('removes legacy API settings and tokens when loading', async () => {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+            apiEnabled: true,
+            apiPort: 9000,
+            apiAuthEnabled: true,
+            apiAuthToken: 'legacy-secret',
+            defaultMode: 'color'
+        }));
+
+        const settings = await getSettings();
+        const stored = JSON.parse(localStorage.getItem(STORAGE_KEY)!);
+
+        expect(settings.get('defaultMode')).toBe('color');
+        expect(settings.get('apiEnabled')).toBe(false);
+        expect(settings.get('apiPort')).toBe(7842);
+        expect(settings.get('apiBindAddress')).toBe('127.0.0.1');
+        expect(settings.get('apiAuthEnabled')).toBe(false);
+        expect(settings.get('apiAuthToken')).toBeNull();
+        expect(stored).not.toHaveProperty('apiEnabled');
+        expect(stored).not.toHaveProperty('apiPort');
+        expect(stored).not.toHaveProperty('apiBindAddress');
+        expect(stored).not.toHaveProperty('apiAuthEnabled');
+        expect(stored).not.toHaveProperty('apiAuthToken');
     });
 
     it('reset clears customizations and restores all defaults', async () => {

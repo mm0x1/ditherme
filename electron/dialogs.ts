@@ -6,6 +6,7 @@
 import { dialog, ipcMain, BrowserWindow } from 'electron';
 import { readFile, writeFile } from 'fs/promises';
 import { basename } from 'path';
+import { assertTrustedRenderer } from './security';
 
 interface OpenFileOptions {
     filters?: { name: string; extensions: string[] }[];
@@ -49,7 +50,8 @@ const EXPORT_FILTERS = [
  */
 export function setupDialogHandlers(): void {
     // Open file dialog
-    ipcMain.handle('dialog:openFile', async (_event, options?: OpenFileOptions) => {
+    ipcMain.handle('dialog:openFile', async (event, options?: OpenFileOptions) => {
+        assertTrustedRenderer(event);
         const win = BrowserWindow.getFocusedWindow();
 
         const result = await dialog.showOpenDialog(win!, {
@@ -79,8 +81,9 @@ export function setupDialogHandlers(): void {
         return files;
     });
 
-    // Save file dialog
-    ipcMain.handle('dialog:saveFile', async (_event, options?: SaveFileOptions) => {
+    // Save file through a native dialog so the renderer never supplies a path.
+    ipcMain.handle('file:save', async (event, data: Uint8Array, options?: SaveFileOptions) => {
+        assertTrustedRenderer(event);
         const win = BrowserWindow.getFocusedWindow();
 
         const result = await dialog.showSaveDialog(win!, {
@@ -89,21 +92,15 @@ export function setupDialogHandlers(): void {
         });
 
         if (result.canceled || !result.filePath) {
-            return null;
+            return false;
         }
 
-        return result.filePath;
-    });
+        if (!(data instanceof Uint8Array)) {
+            throw new TypeError('File data must be a Uint8Array');
+        }
 
-    // Read file
-    ipcMain.handle('file:read', async (_event, path: string) => {
-        const data = await readFile(path);
-        return new Uint8Array(data);
-    });
-
-    // Write file
-    ipcMain.handle('file:write', async (_event, path: string, data: Uint8Array) => {
-        await writeFile(path, Buffer.from(data));
+        await writeFile(result.filePath, Buffer.from(data));
+        return true;
     });
 }
 
@@ -163,22 +160,4 @@ export async function showOpenVideoDialog(): Promise<FileResult[] | null> {
     );
 
     return files;
-}
-
-/**
- * Show save dialog
- */
-export async function showSaveDialog(defaultName: string): Promise<string | null> {
-    const win = BrowserWindow.getFocusedWindow();
-
-    const result = await dialog.showSaveDialog(win!, {
-        defaultPath: defaultName,
-        filters: EXPORT_FILTERS
-    });
-
-    if (result.canceled || !result.filePath) {
-        return null;
-    }
-
-    return result.filePath;
 }

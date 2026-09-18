@@ -7,6 +7,7 @@ import type { APIRequest, APIResponse, APIContext, InfoResponse } from '../types
 import { createResponse } from '../types.ts';
 import { getRouteInfo } from '../routes.ts';
 import { API_VERSION } from '../index.ts';
+import { APP_VERSION } from '../../version.ts';
 
 /**
  * Handle GET /api/info
@@ -17,8 +18,8 @@ export async function handleInfo(
     _context: APIContext
 ): Promise<APIResponse> {
     const response: InfoResponse = {
-        name: 'dithertoy',
-        version: '1.0.0', // App version
+        name: 'ditherme',
+        version: APP_VERSION,
         apiVersion: API_VERSION,
         capabilities: [
             'dithering',

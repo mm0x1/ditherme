@@ -40,7 +40,7 @@ async function getFFmpeg(): Promise<FFmpegInstance> {
     // importScripts — it must dynamic-`import()` the core. That requires the
     // ESM build of @ffmpeg/core, not the UMD one. Load via blob URLs to keep
     // MIME types correct across CDN/CORS quirks.
-    const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm';
+    const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.10/dist/esm';
 
     const coreURL = await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript');
     const wasmURL = await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm');
